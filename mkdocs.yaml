@@ -1,0 +1,72 @@
+# https://www.mkdocs.org/user-guide/configuration/
+site_name: EcoGraph Documentation
+repo_url: https://github.com/brightway-lca/brightwayhybrid
+copyright: © Paul Scherrer Institute (PSI) | Code under MIT License
+nav:
+  - Home: 'index.md'
+  - About: 'about.md'
+  - Related Projects: 'related.md'
+  - Theory:
+    - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
+    - Hybrid Matrix Calculations: 'theory/calculations.md'
+  - API Reference (Internal):
+    - Concordance: 'api/concordance.md'
+    - Characterization: 'api/characterization.md'
+theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
+  name: material
+  #custom_dir: docs/_overrides
+  logo: _static/logos/brightwayhybrid_logo.svg
+  favicon: _static/logos/brightwayhybrid_logo.svg
+  highlightjs: true
+  navigation_depth: 4
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - content.footnote.tooltips
+plugins:
+  - search
+  - mkdocstrings: # https://mkdocstrings.github.io/python/usage/
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_root_toc_entry: True
+            show_root_heading: true
+            heading_level: 2
+            show_source: true
+            filters: []
+  - markdown-exec
+  - autorefs
+  - include-markdown
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.snippets
+  - pymdownx.highlight:
+      use_pygments: false
+
+extra_javascript:
+  - _javascripts/katex.js
+  # https://cdnjs.com/libraries/KaTeX
+  # unpkg is incredibly slow (17s to load the css file)
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js
+extra_css:
+  # https://cdnjs.com/libraries/KaTeX
+  # unpkg is incredibly slow (17s to load the css file)
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css
+  - _css/extra.css
+
+watch:
+  - brightwayhybrid
+
+extra:
+  generator: false
