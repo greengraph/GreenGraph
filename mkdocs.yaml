@@ -1,6 +1,6 @@
 # https://www.mkdocs.org/user-guide/configuration/
 site_name: EcoGraph Documentation
-repo_url: https://github.com/brightway-lca/brightwayhybrid
+repo_url: https://github.com/michaelweinold/ecograph
 copyright: © Paul Scherrer Institute (PSI) | Code under MIT License
 nav:
   - Home: 'index.md'
@@ -9,14 +9,16 @@ nav:
   - Theory:
     - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
     - Hybrid Matrix Calculations: 'theory/calculations.md'
+  - Practice:
+    - Working with the Graph: 'practice/graph.md'
   - API Reference (Internal):
     - Concordance: 'api/concordance.md'
     - Characterization: 'api/characterization.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   #custom_dir: docs/_overrides
-  logo: _static/logos/brightwayhybrid_logo.svg
-  favicon: _static/logos/brightwayhybrid_logo.svg
+  logo: _static/logos/logo_ecograph.svg
+  favicon: _static/logos/logo_ecograph.svg
   highlightjs: true
   navigation_depth: 4
   features:
@@ -66,7 +68,7 @@ extra_css:
   - _css/extra.css
 
 watch:
-  - brightwayhybrid
+  - ecograph
 
 extra:
   generator: false
