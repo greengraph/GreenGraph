@@ -119,7 +119,18 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         system: str = None,
         metadata: dict = None,
     ) -> None:
-        """Adds a node with custom attributes to the graph."""
+        """
+        Given a set of mandatory and optional node attributes, adds a node to the graph.
+
+        Notes
+        -----
+        The `uuid` attribute is automatically generated for every node.
+        This is a _random_ unique identifier (UUID v4).
+        
+        Raises
+        ------
+
+        """
         node_data = {
             'name': name,
             'product': product,
@@ -139,15 +150,32 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
 
     def add_edge(
         self,
-        source: str,
-        target: str,
+        source: str | dict,
+        target: str | dict,
         key: str,
         amount: float,
         name: str = None,
         unit: str = None,
         metadata: dict = None
     ) -> None:
-        """Adds an edge with custom attributes to the graph."""
+        """
+        Given a source and target node, adds an edge with custom attributes to the graph.
+
+        Notes
+        -----
+        The source and target nodes can either be given as UUID strings or as dictionaries of node attributes.
+
+        See Also
+        --------
+        [`networkx.MultiDiGraph.add_edge`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edge.html#networkx.MultiDiGraph.add_edge)
+
+        Raises
+        ------
+        AttributeError
+            If the source or target node does not exist in the graph.
+        AttributeError
+            If there are more than one node for either source or target corresponding to the given attributes. 
+        """
         edge_data = {
             'amount': amount,
             'name': name,
@@ -310,6 +338,34 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
             raise AttributeError(f"Multiple nodes found with the given attributes. Please refine your attributes.")
         else:
             return list_of_nodes[0][0]
+        
+    def generate_raw_matrix_from_graph(
+        self,
+        matrix_index_ordering: list[str] = None,
+    ) -> np.ndarray:
+        """
+        #TODO how to make the "concordance" edges are ignored?
+
+        _extended_summary_
+
+        Parameters
+        ----------
+        matrix_index_ordering : list[str], optional
+            _description_, by default None
+
+        Returns
+        -------
+        np.ndarray
+            _description_
+        """
+        return nx.to_numpy_array(
+            G=self.graph,
+            nodelist=matrix_index_ordering,
+            dtype=np.float64,
+            weight='weight',
+            nonedge=0.0,
+        )
+
 
 
 class ecograph():
@@ -327,11 +383,12 @@ class ecograph():
 
         See Also
         --------
-        [`networkx.utils.arbitrary_element`](https://networkx.org/documentation/stable/reference/generated/networkx.utils.misc.arbitrary_element.html#networkx.utils.misc.arbitrary_element)
+        [`networkx.utils.arbitrary_element`](https://networkx.org/documentation/stable/reference/generated/networkx.utils.misc.arbitrary_element.html#networkx.utils.misc.arbitrary_element)  
+        [`networkx.classes.reportviews.NodeDataView`](https://github.com/networkx/networkx/blob/e3542acf18c53d07f80a5b4c17d50218d7259469/networkx/classes/reportviews.py#L287)
 
         Returns
         -------
-        [`networkx.classes.reportviews.NodeDataView`](https://github.com/networkx/networkx/blob/e3542acf18c53d07f80a5b4c17d50218d7259469/networkx/classes/reportviews.py#L287)
+        
         """
         return self.graph.nodes(nx.utils.arbitrary_element(self.graph.nodes()))
     
