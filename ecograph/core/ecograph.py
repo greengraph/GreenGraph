@@ -116,12 +116,10 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         location: str = None,
         type: str = None,
         loops: bool = False,
-        edges: bool = True,
-        database: str = None,
-        databasecode: str = None,
+        system: str = None,
         metadata: dict = None,
     ) -> None:
-        """Add a node with custom attributes to the graph."""
+        """Adds a node with custom attributes to the graph."""
         node_data = {
             'name': name,
             'product': product,
@@ -130,9 +128,8 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
             'location': location,
             'type': type,
             'loops': loops,
-            'edges': edges,
-            'database': database,
-            'databasecode': databasecode,
+            'edges': False,
+            'system': system,
             'metadata': metadata or {}
         }
         super().add_node(
@@ -150,13 +147,15 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         unit: str = None,
         metadata: dict = None
     ) -> None:
-        """Add an edge with custom attributes to the graph."""
+        """Adds an edge with custom attributes to the graph."""
         edge_data = {
             'amount': amount,
             'name': name,
             'unit': unit,
             'metadata': metadata or {}
         }
+        if self.graph.node[target]['edges_as_matrix'] == True:
+            raise AttributeError(f"No edges to node {target} can be added. This is because it has no edges stored on the graph. Instead, edges are stored in a matrix.")
         super().add_edge(
             u_for_edge=source,
             v_for_edge=target,
@@ -164,6 +163,27 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
             **edge_data
         )
 
+    def remove_node(
+        self,
+        node: str
+    ) -> None:
+        """Removs a node from the graph."""
+        if node['edges_as_matrix'] == True:
+            raise AttributeError(f"The individual node {node} cannot be removed no edges stored on the graph. This is because its edges are stored in a matrix.")
+        super().remove_node(node)
+
+    def remove_system(
+        self,
+        system: str
+    ) -> None:
+        """Removes a system from the graph."""
+        self.graph.remove_nodes_from(
+            [node for node, attrs in g.nodes(data=True) if attrs['system'] == 'system']
+        )
+
+    def build_matrix(
+        self
+    ) -> np.ndarray:
 
 class ecograph():
     def __init__(self):
@@ -176,7 +196,7 @@ class ecograph():
 
     def random(self):
         """
-        View a random node from the graph.
+        Returns a view of a random node from the graph.
 
         See Also
         --------
@@ -187,3 +207,10 @@ class ecograph():
         [`networkx.classes.reportviews.NodeDataView`](https://github.com/networkx/networkx/blob/e3542acf18c53d07f80a5b4c17d50218d7259469/networkx/classes/reportviews.py#L287)
         """
         return self.graph.nodes(nx.utils.arbitrary_element(self.graph.nodes()))
+    
+    def compute_production_vector(
+        self,
+        node: str,
+    ) -> np.ndarray:
+        
+        vector_final_demand = np.zeros(self.graph.number_of_nodes())
