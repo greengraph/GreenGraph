@@ -33,6 +33,7 @@ dependencies = [
     "pandas",
     "numpy",
     "networkx",
+    "xarray",
 ]
 
 [project.urls]
