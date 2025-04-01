@@ -165,25 +165,152 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
 
     def remove_node(
         self,
-        node: str
+        uuid: str = None,
+        conditions: dict = None
     ) -> None:
-        """Removs a node from the graph."""
-        if node['edges_as_matrix'] == True:
+        """
+        Given a node (=UUID string) or a dictionary of node attributes, removes the node from the graph.
+
+        Notes
+        -----
+        Nested attributes (such as attributes stored in the `metadata` dictionary)
+        can be accessed by prefixing the key with `metadata.`:
+        ```
+        conditions = {
+            'product': 'electricity',
+            'location': 'USA',
+            'metadata.database': 'ecoinvent'
+        }
+        ```
+
+        See Also
+        --------
+        [`networkx.MultiDiGraph.remove_node`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.remove_node.html#networkx.MultiDiGraph.remove_node)
+
+        Warnings
+        --------
+        If the node has edges stored in a matrix, it cannot be removed from the graph.
+        In this case, the entire system must be removed using the [][`remove_system`] method.
+
+        Parameters
+        ----------
+        uuid: str
+            The UUID of the node to remove.
+        conditions: dict
+            A dictionary of node attributes to match.  
+            `keys` are node attributes, `values` are expected values.
+
+        Raises
+        ------
+        AttributeError
+            If no nodes are found that match the condition.
+        AttributeError
+            If multiple nodes are found that match the condition.
+        AttributeError
+            If the node has edges stored in a matrix and can therefore not be deleted individually.
+        """
+        if (uuid is None and conditions is None) or (uuid is not None and conditions is not None):
+            raise AttributeError("EITHER a node (=UUID string) or conditions dictionary must be provided.")
+        if uuid is not None:
+            if self.graph.has_node(uuid) == False:
+                raise AttributeError(f"The node {uuid} does not exist in the graph.")
+            else:
+                pass
+        elif conditions is not None:
+            uuid = self.get_node_by_attributes(conditions)        
+        if self.graph[uuid]['edges_as_matrix'] == True:
             raise AttributeError(f"The individual node {node} cannot be removed no edges stored on the graph. This is because its edges are stored in a matrix.")
-        super().remove_node(node)
+        else:
+            self.graph.remove_node(uuid)
 
     def remove_system(
         self,
         system: str
     ) -> None:
-        """Removes a system from the graph."""
-        self.graph.remove_nodes_from(
-            [node for node, attrs in g.nodes(data=True) if attrs['system'] == 'system']
-        )
+        """
+        Given a system name (=node attribute `system`), removes all nodes of the system from the graph.
+        
+        Parameters
+        ----------
+        system: str
+            The name of the system to remove.
+        
+        Raises
+        ------
+        AttributeError
+            If no nodes are found that match the condition.        
+        """
+        list_of_nodes = [node for node, attrs in self.graph.nodes(data=True) if attrs['system'] == system]
+        if len(list_of_nodes) == 0:
+            raise AttributeError(f"No nodes found with the given system name.")
+        self.graph.remove_nodes_from(list_of_nodes)
 
-    def build_matrix(
-        self
-    ) -> np.ndarray:
+
+    def get_node_by_attributes(
+        self,
+        conditions: dict
+    ) -> str:
+        """
+        Given a dictionary of node attributes, returns the node (=UUID string) that matches all conditions.
+
+        Notes
+        -----
+        Nested attributes (such as attributes stored in the `metadata` dictionary)
+        can be accessed by prefixing the key with `metadata.`:
+        ```
+        conditions = {
+            'product': 'electricity',
+            'location': 'USA',
+            'metadata.database': 'ecoinvent'
+        }
+        ```
+
+        Parameters
+        ----------
+        conditions: dict
+            A dictionary of node attributes to match.  
+            `keys` are node attributes, `values` are expected values.
+
+        Raises
+        ------
+        AttributeError
+            If no nodes are found that match the condition.
+        AttributeError
+            If multiple nodes are found that match the condition.
+
+        Returns
+        -------
+        str
+            The node (=UUID string) that matches the conditions.
+        """
+
+        def _condition_met(node: dict):
+            for key_expected, value_expected in conditions.items():
+                if key_expected.startswith('metadata.'):
+                    subkey_expected = key_expected.split('.', 1)[1]
+                    if 'metadata' not in node or subkey_expected not in node['metadata']:
+                        return False
+                    value_actual = node['metadata'][subkey_expected]
+                else:
+                    if key_expected not in node:
+                        return False
+                    else:
+                        value_actual = node[key_expected]
+                
+                if value_actual != value_expected:
+                    return False
+                else:
+                    return True
+
+        list_of_nodes = [(node, data) for node, data in self.nodes(data=True) if _condition_met(node)]
+
+        if len(list_of_nodes) == 0:
+            raise AttributeError(f"No nodes found with the given attributes.")
+        elif len(list_of_nodes) > 1:
+            raise AttributeError(f"Multiple nodes found with the given attributes. Please refine your attributes.")
+        else:
+            return list_of_nodes[0][0]
+
 
 class ecograph():
     def __init__(self):
@@ -214,3 +341,5 @@ class ecograph():
     ) -> np.ndarray:
         
         vector_final_demand = np.zeros(self.graph.number_of_nodes())
+
+# %%
