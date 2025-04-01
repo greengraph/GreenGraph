@@ -12,8 +12,12 @@ nav:
   - Practice:
     - Working with the Graph: 'practice/graph.md'
   - API Reference (Internal):
-    - Concordance: 'api/concordance.md'
-    - Characterization: 'api/characterization.md'
+  #  - Concordance: 'api/concordance.md'
+  #  - Characterization: 'api/characterization.md'
+    - Core:
+      - EcoGraph: 'api/ecograph.md'
+    - Import:
+      - IMPACT World +: 'api/import/impact_world_plus.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   #custom_dir: docs/_overrides
