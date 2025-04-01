@@ -2,7 +2,7 @@
 
 ## Authors
 
-The `XXXXXXXXXX` package was written by [Michael Weinold](https://www.linkedin.com/in/michaelweinold/) under the supervision of [Prof. Guillaume Majeau-Bettez](https://www.polymtl.ca/expertises/en/majeau-bettez-guillaume) and [Prof. Russell McKenna](https://esc.ethz.ch/people/person-detail.mckenna.html) as part of his doctoral research at ETH Zurich and Paul Scherrer Institute (PSI).
+The `EcoGraph` package was written by [Michael Weinold](https://www.linkedin.com/in/michaelweinold/) under the supervision of [Prof. Guillaume Majeau-Bettez](https://www.polymtl.ca/expertises/en/majeau-bettez-guillaume) and [Prof. Russell McKenna](https://esc.ethz.ch/people/person-detail.mckenna.html) as part of his doctoral research at ETH Zurich and Paul Scherrer Institute (PSI).
 
 ## Funding
 
