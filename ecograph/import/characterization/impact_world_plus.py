@@ -43,7 +43,10 @@ def load_impact_world_plus(
         DataFrame containing characterization factors for the specified versions of IMPACT World+ and Ecoinvent.
     """
 
+    "https://zenodo.org/records/14041258/files/impact_world_plus_2.1_expert_version_ecoinvent_v3.10.xlsx?download=1"
+    "https://zenodo.org/records/14041258/files/impact_world_plus_2.1_expert_version_ecoinvent_v3.10.xlsx?download=1"
     "https://zenodo.org/records/14041258/files/impact_world_plus_2.1_expert_version_exiobase.xlsx?download=1"
+    'https://zenodo.org/records/14041258/files/impact_world_plus_2.1_expert_version_exiobase_v.xlsx?download=1'
     
     iwp_version_id = {
         '2.0.1': '8200703',
@@ -52,9 +55,14 @@ def load_impact_world_plus(
 
     if version_database == None:
         version_database = ""
+    else:
+        version_database = version_database.replace('.', '')
+        version_database = f"_v{version_database}"
+    
+    path_download = f"https://zenodo.org/records/{iwp_version_id[version_iwp]}/files/impact_world_plus_{version_iwp}_{type_iwp}_{database}{version_database}.xlsx?download=1"
 
     return pd.read_excel(
-        io=f"https://zenodo.org/record/{iwp_version_id[version_iwp]}/files/impact_world_plus_{version_iwp}_{type_iwp}_{database}_v{version_database}.xlsx?download=1",
+        io=path_download,
         sheet_name='Sheet1',
         header=0,
         index_col=0,
@@ -66,6 +74,6 @@ def load_impact_world_plus(
 load_impact_world_plus(
     version_iwp='2.1',
     type_iwp='expert_version',
-    database='ecoinvent',
-    version_database='3.10'
+    database='exiobase',
+    version_database=None
 )

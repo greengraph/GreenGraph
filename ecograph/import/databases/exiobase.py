@@ -1,69 +1,107 @@
+
+# %%
 import networkx as nx
 import pandas as pd
 import numpy as np
-import xarray as xr
+import scipy as sp
 import logging
+from pathlib import Path
+import uuid
 
+path_A = '/Users/michaelweinold/data/IOT_2022_ixi/A.txt'
+path_S = '/Users/michaelweinold/data/IOT_2022_ixi/satellite/S.txt'
+path_U = '/Users/michaelweinold/data/IOT_2022_ixi/satellite/unit.txt'
+path_exiobase_root = '/Users/michaelweinold/data/IOT_2022_ixi'
 
-def load_exiobase_from_zenodo(
-    'version': str,
-    'format': str,
-) -> None:
-    """_summary_
-
-    _extended_summary_
-
-    Warnings
-    --------
-    Downloads are ~500MB per EXIOBASE version.
-
-    Raises
-    ------
-    ValueError
-        _description_
-    """
-    if 'format' not in ['pxp', 'ixi']:
-        raise ValueError("format must be 'pxp' (product-by-product) or 'ixi (industry-by-industry)'")
-
-def read_exiobase() -> xr.DataArray:
-    """_summary_
-
-    _extended_summary_
-
-    See Also
-    --------
-    - [EXIOBASE 3 on Zenodo](https://doi.org/10.5281/zenodo.3583070)
-    - [Section "Terminology" in the `pymrio` Documentation](https://pymrio.readthedocs.io/en/latest/terminology.html)
-    - [Miller & Blair (3rd Edition, 2022)](https://doi.org/10.1017/9781108676212)
-
-
-    Returns
-    -------
-    xr.DataArray
-        _description_
-    """
-
-# %%
-
-import pandas as pd
-
-df_data = pd.read_csv(
-    '/Users/michaelweinold/data/IOT_2022_ixi/A.txt',
-    sep='\t',
+data_technology_matrix = pd.read_csv(
+    path_exiobase_root + '/A.txt',
+    delimiter='\t',
     skiprows=3,
-    usecols=range(3, pd.read_csv('/Users/michaelweinold/data/IOT_2022_ixi/A.txt', sep='\t', nrows=1).shape[1]),
-    header=None,
-    index_col=None,
-)
-
-df_indices = pd.read_csv(
-    '/Users/michaelweinold/data/IOT_2022_ixi/A.txt',
-    skiprows=3,
-    usecols=[0, 1],
-    sep='\t',
     header=None
 )
 
-row_index = pd.MultiIndex.from_arrays([df_indices[0], df_indices[1]])
+number_of_sectors = data_technology_matrix.shape[0]
 
-df_data.index = row_index
+sector_metadata = data_technology_matrix.iloc[:, [0, 1]].copy()
+sector_metadata.columns = ['location', 'name']
+sector_metadata['index'] = range(number_of_sectors)
+sector_metadata['uuid'] = [str(uuid.uuid4()) for _ in range(number_of_sectors)]
+
+G = nx.from_numpy_array(
+    data_technology_matrix.iloc[:, 2:].to_numpy(),
+    create_using=nx.DiGraph,
+    parallel_edges=False,
+    edge_attr='weight',
+    nodelist=sector_metadata['uuid'].tolist(),
+)
+
+technology_matrix_graph_attributes = {}
+for idx, row in sector_metadata.iterrows():
+    technology_matrix_graph_attributes[row['uuid']] = {
+        'name': row['name'],
+        'type': 'technosphere',
+        'system': 'exiobase',
+        'unit': 'USD',
+        'index': row['index']
+    }
+nx.set_node_attributes(G, technology_matrix_graph_attributes)
+
+# %%
+
+data_satellite_matrix = pd.read_csv(
+    path_exiobase_root + '/satellite/S.txt',
+    delimiter='\t',
+    skiprows=3,
+    header=None
+)
+
+satellite_metadata = pd.read_csv(
+    path_exiobase_root + '/satellite/unit.txt',
+    delimiter='\t',
+    skiprows=1,
+    header=None
+)
+number_of_satellites = data_satellite_matrix.shape[0]
+satellite_metadata.columns = ['satellite', 'unit']
+satellite_metadata['index'] = range(number_of_satellites)
+satellite_metadata['uuid'] = [str(uuid.uuid4()) for _ in range(number_of_satellites)]
+
+
+B = nx.algorithms.bipartite.from_biadjacency_matrix(
+    sp.sparse.csr_matrix(data_satellite_matrix.iloc[:, 1:]),
+    create_using=nx.DiGraph,
+    edge_attribute='flow',
+)
+
+
+satellite_uuid_mapping = {idx: row['uuid'] for idx, row in satellite_metadata.iterrows()}
+sector_uuid_mapping = {idx + len(satellite_metadata): row['uuid'] for idx, row in sector_metadata.iterrows()}
+combined_uuid_mapping = satellite_uuid_mapping | sector_uuid_mapping
+
+
+nx.relabel_nodes(B, combined_uuid_mapping, copy=False)
+
+# %%
+
+satellite_matrix_graph_attributes = {}
+for idx, row in satellite_metadata.iterrows():
+    satellite_matrix_graph_attributes[row['uuid']] = {
+        'name': row['satellite'],
+        'type': 'biosphere',
+        'system': 'exiobase',
+        'unit': row['unit'],
+        'index': row['index']
+    }
+
+for node in B.nodes():
+    B.nodes[node].clear()
+nx.set_node_attributes(B, satellite_matrix_graph_attributes)
+
+# %%
+# merging graphs
+
+M = nx.compose(B, G)
+
+
+# %%
+# exporting the relevant matrices to xarrays

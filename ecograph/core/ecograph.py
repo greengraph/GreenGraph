@@ -7,6 +7,7 @@ import networkx as nx
 from datetime import datetime
 from typing import Any, Literal
 import uuid
+from operator import itemgetter
 
 class CustomMultiDiGraph(nx.MultiDiGraph):
     r"""
@@ -107,20 +108,19 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
     doi:[10.1007/978-3-662-70107-2](https://doi.org/10.1007/978-3-662-70107-2)
 
     """
-    def add_node(
+    def add_technosphere_node(
         self,
         name: str,
-        product: str,
-        amount: float,
+        product: str=None,
+        amount: float=None,
         unit: str = None,
         location: str = None,
-        type: str = None,
-        loops: bool = False,
         system: str = None,
+        index: int = None,
         metadata: dict = None,
     ) -> None:
         """
-        Given a set of mandatory and optional node attributes, adds a node to the graph.
+        Given a set of mandatory and optional node attributes, adds a technosphere node to the graph.
 
         Notes
         -----
@@ -133,14 +133,53 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         """
         node_data = {
             'name': name,
+            'type': 'technosphere',
             'product': product,
             'amount': amount,
             'unit': unit,
             'location': location,
-            'type': type,
-            'loops': loops,
-            'edges': False,
             'system': system,
+            'index': index,
+            'metadata': metadata or {}
+        }
+        super().add_node(
+            node_for_adding=str(uuid.uuid4()),
+            **node_data
+        )
+
+    def add_biosphere_node(
+        self,
+        name: str,
+        unit: str,
+        domain: str = None,
+        subdomain: str = None,
+        location: str = None,
+        system: str = None,
+        index: int = None,
+        metadata: dict = None,
+    ) -> None:
+        """
+        Given a set of mandatory and optional node attributes, adds a biosphere node to the graph.
+
+        Notes
+        -----
+        The `uuid` attribute is automatically generated for every node.
+        This is a _random_ unique identifier (UUID v4).
+        
+        Raises
+        ------
+        AttributeError
+            If the node already exists in the graph.
+        """
+        node_data = {
+            'name': name,
+            'type': 'biosphere',
+            'domain': domain,
+            'subdomain': subdomain,
+            'unit': unit,
+            'location': location,
+            'system': system,
+            'index': index,
             'metadata': metadata or {}
         }
         super().add_node(
@@ -154,8 +193,8 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         target: str | dict,
         key: str,
         amount: float,
-        name: str = None,
         unit: str = None,
+        name: str = None,
         metadata: dict = None
     ) -> None:
         """
@@ -339,27 +378,52 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         else:
             return list_of_nodes[0][0]
         
-    def generate_raw_matrix_from_graph(
+
+    def sort_nodes_by_attributes(
         self,
-        matrix_index_ordering: list[str] = None,
+        list_attributes: list[str],
+        reverse: bool = False,
+    ) -> list[str]:
+        """
+        Sorts a list of dictionaries by the specified keys in ascending order.
+
+        Parameters:
+        data (list): A list of dictionaries to sort.
+        keys (list): A list of keys to sort by, in order of priority.
+
+        Returns:
+        list: A new list of dictionaries sorted by the specified keys.
+        """
+        return sorted(
+            iterable=[node_data for node_uuid, node_data in self.graph.nodes],
+            key=itemgetter(*list_attributes),
+            reverse=reverse
+        )
+        
+
+    def _generate_raw_matrix_from_graph(
+        self,
+        systems: list[str] = None,
+        matrix_index_ordering: list[tuple[str, str]] = None,
     ) -> np.ndarray:
         """
-        #TODO how to make the "concordance" edges are ignored?
-
         _extended_summary_
 
         Parameters
         ----------
-        matrix_index_ordering : list[str], optional
-            _description_, by default None
+        matrix_index_ordering : list[tuple[str, str]], optional
+            A list of tuples representing the order of nodes in the matrix, by default None
 
         Returns
         -------
         np.ndarray
-            _description_
+            A NumPy array representing the adjacency matrix of the graph
         """
+        nodelist = self.graph.nodes()
         return nx.to_numpy_array(
-            G=self.graph,
+            G=self.graph.edge_subgraph(
+                (u, v, key) for u, v, key in self.graph.edges(keys=True) if key != 'concordance'
+            ),
             nodelist=matrix_index_ordering,
             dtype=np.float64,
             weight='weight',
