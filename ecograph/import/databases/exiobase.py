@@ -1,4 +1,3 @@
-
 # %%
 import networkx as nx
 import pandas as pd
@@ -102,6 +101,20 @@ nx.set_node_attributes(B, satellite_matrix_graph_attributes)
 
 M = nx.compose(B, G)
 
+nx.algorithms.bipartite.biadjacency_matrix(
+    M,
+    row_order = [n for n in M.nodes() if M.nodes[n]['type'] == 'biosphere'],
+    column_order = [n for n in M.nodes() if M.nodes[n]['type'] == 'technosphere'],
+    weight='flow',
+).todense()
+
+labeled_array.sel(rows=[n for n in M.nodes() if M.nodes[n]['type'] == 'biosphere'][5], cols=[n for n in M.nodes() if M.nodes[n]['type'] == 'technosphere'][7]).values
+
+labeled_array = xr.DataArray(
+    arrB, 
+    dims=['rows', 'cols'], 
+    coords={'rows': [n for n in M.nodes() if M.nodes[n]['type'] == 'biosphere'], 'cols': [n for n in M.nodes() if M.nodes[n]['type'] == 'technosphere']}
+)
 
 # %%
 # exporting the relevant matrices to xarrays
