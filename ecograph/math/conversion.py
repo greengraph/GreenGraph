@@ -2,6 +2,8 @@
 from ecograph.utility.logging import logtimer
 import networkx as nx
 import numpy as np
+import xarray as xr
+
 
 def _generate_matrices_from_graph(
     G: nx.MultiDiGraph,
@@ -38,7 +40,33 @@ def _generate_matrices_from_graph(
             weight='flow',
             format='csr'
         )
-    with logtimer("Converting from sparse to dense matrices."):
+    with logtimer("Normalizing technosphere matrix ('I-A'-convention)."):
         A = A.todense()
         B = B.todense()
-    return A, B
+        array_production = np.array([G.nodes[node]['production'] for node in list(G.nodes())])
+        Anorm = A / array_production
+        Bnorm = B / array_production
+    if dense:
+        pass
+    else:
+        Anorm = Anorm.tocsr()
+        Bnorm = Bnorm.tocsr()
+    
+    Anorm = xr.DataArray(
+        Anorm,
+        dims=('rows', 'cols'),
+        coords={
+            'rows': technosphere_row_and_column_order,
+            'cols': technosphere_row_and_column_order,
+        },
+    )
+    Bnorm = xr.DataArray(
+        Bnorm,
+        dims=('rows', 'cols'),
+        coords={
+            'rows': biosphere_row_order,
+            'cols': technosphere_row_and_column_order,
+        },
+    )
+        
+    return Anorm, Bnorm
