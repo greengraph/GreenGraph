@@ -43,33 +43,38 @@ def calculate_production_vector(
             x = np.linalg.solve(np.eye(A.data.shape[0]) - A.data, f)
 
     x = xr.DataArray(
-            x,
-            dims=('rows'),
-            coords={
-                'rows': A.coords['rows'].values
-            }
+        x,
+        dims=A.dims[0],
+        coords={A.dims[0]: A.coords[A.dims[0]]}
     )
 
     return x
 
 
-def calculate_inventory_vector(
+def calculate_inventory_vectors(
     x: xr.DataArray,
     B: xr.DataArray
 ) -> xr.DataArray:
-    g = B.data @ x.data
-    g = xr.DataArray(
-        g,
-        dims=('rows'),
-        coords={
-            'rows': B.coords['rows'].values
-        }
-    )
-    return g
-
-
-def calculate_impact_vector(
-    g: xr.DataArray,
-    Q: xr.DataArray
-) -> xr.DataArray:
+    dict_inventory_vectors_by_system = {}
+    for system in np.unique(B.coords['system'].values):
+        B_system = B.sel(col={'system': system})
+        x_system = x.sel(row={'system': system})
+        g_system = xr.DataArray(
+            B_system.data @ x_system.data,
+            dims=('rows'),
+            coords={
+                'rows': B.coords['rows'].values
+            }
+        )
+        dict_inventory_vectors_by_system[system] = g_system
     
+    return dict_inventory_vectors_by_system
+
+
+def calculate_impact_vectors(
+    dict_g: dict,
+    Q: xr.DataArray,
+    impact_category: str,
+) -> xr.DataArray:
+    for system, g in dict_g.items():
+        

@@ -14,19 +14,19 @@ def _generate_matrices_from_graph(
     """
     Generate matrices.......
     """
-    technosphere_row_and_column_order = sorted(
+    technosphere_sorted_uuids = sorted(
         [node for node in G.nodes() if G.nodes[node].get('type') == 'technosphere'],
         key=lambda node: tuple(G.nodes[node][attr] for attr in technosphere_matrix_sorting_attributes)
     )
-    biosphere_row_order = sorted(
+    biosphere_sorted_uuids = sorted(
         [node for node in G.nodes() if G.nodes[node].get('type') == 'biosphere'],
         key=lambda node: tuple(G.nodes[node][attr] for attr in biosphere_matrix_sorting_attributes)
     )
     with logtimer("Generating technosphere matrix."):
         A = nx.algorithms.bipartite.biadjacency_matrix(
             G,
-            row_order=technosphere_row_and_column_order,
-            column_order=technosphere_row_and_column_order,
+            row_order=technosphere_sorted_uuids,
+            column_order=technosphere_sorted_uuids,
             dtype=float,
             weight='flow',
             format='csr'
@@ -34,8 +34,8 @@ def _generate_matrices_from_graph(
     with logtimer("Generating biosphere matrix."):
         B = nx.algorithms.bipartite.biadjacency_matrix(
             G,
-            row_order=biosphere_row_order,
-            column_order=technosphere_row_and_column_order,
+            row_order=biosphere_sorted_uuids,
+            column_order=technosphere_sorted_uuids,
             dtype=float,
             weight='flow',
             format='csr'
@@ -56,17 +56,31 @@ def _generate_matrices_from_graph(
         Anorm,
         dims=('rows', 'cols'),
         coords={
-            'rows': technosphere_row_and_column_order,
-            'cols': technosphere_row_and_column_order,
+            'rows': technosphere_sorted_uuids,
+            'cols': technosphere_sorted_uuids,
         },
     )
+    Anorm = Anorm.assign_coords(
+        system=[G.nodes[node].get('system') for node in technosphere_sorted_uuids],
+        uuid=technosphere_sorted_uuids,
+    )
+    Anorm = Anorm.set_index(
+        cols=['system', 'uuid'],
+        rows=['system', 'uuid'],
+    ))
+    
     Bnorm = xr.DataArray(
         Bnorm,
         dims=('rows', 'cols'),
         coords={
-            'rows': biosphere_row_order,
-            'cols': technosphere_row_and_column_order,
+            'rows': biosphere_sorted_uuids,
+            'cols': technosphere_sorted_uuids,
         },
     )
-        
+    Bnorm = Bnorm.assign_coords(
+        system=[G.nodes[node].get('system') for node in technosphere_sorted_uuids],
+        uuid=technosphere_sorted_uuids,
+    )
+    Bnorm = Bnorm.set_index(cols=['system', 'uuid'])
+    
     return Anorm, Bnorm
