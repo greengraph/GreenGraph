@@ -7,8 +7,11 @@ nav:
   - About: 'about.md'
   - Related Projects: 'related.md'
   - Theory:
+    - Notation and Diagrams: 'theory/notation.md'
     - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
     - Hybrid Matrix Calculations: 'theory/calculations.md'
+  - Structure:
+    - EcoGraph: 'structure/ecograph.md'
   - Practice:
     - Working with the Graph: 'practice/graph.md'
   - API Reference (Internal):
@@ -17,7 +20,7 @@ nav:
     - Core:
       - EcoGraph: 'api/ecograph.md'
     - Import:
-      - IMPACT World +: 'api/import/impact_world_plus.md'
+      - IMPACT World +: 'api/importers/impact_world_plus.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   #custom_dir: docs/_overrides
@@ -60,6 +63,8 @@ markdown_extensions:
       permalink: true
   - pymdownx.arithmatex:
       generic: true
+  - abbr
+  - attr_list
   - pymdownx.snippets
   - pymdownx.highlight:
       use_pygments: false

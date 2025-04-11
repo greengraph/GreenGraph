@@ -1,5 +1,3 @@
-# %%
-
 import pandas as pd
 
 
@@ -68,12 +66,3 @@ def load_impact_world_plus(
         index_col=0,
         engine='openpyxl',
     )
-
-# %%
-
-load_impact_world_plus(
-    version_iwp='2.1',
-    type_iwp='expert_version',
-    database='exiobase',
-    version_database=None
-)

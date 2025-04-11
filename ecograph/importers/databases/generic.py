@@ -11,7 +11,7 @@ from datetime import datetime
 from ecograph.utility.logging import logtimer
 
 
-def generic_system_from_matrices(
+def _generic_graph_system_from_matrices(
     name_system: str,
     matrix_technosphere: np.ndarray,
     matrix_biosphere: np.ndarray,
