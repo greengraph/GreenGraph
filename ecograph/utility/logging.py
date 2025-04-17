@@ -2,6 +2,11 @@ from contextlib import contextmanager
 from datetime import datetime
 import logging
 
+logging.basicConfig(
+    level=logging.INFO, 
+    format='EcoGraph | %(levelname)s | %(message)s',
+    handlers=[logging.StreamHandler()]  # Output to console
+)
 
 @contextmanager
 def logtimer(message):
@@ -12,4 +17,4 @@ def logtimer(message):
     finally:
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
-        logging.info(f"{end_time.isoformat()}: Completed in {duration}sec.: {message}")
+        logging.info(f"{end_time.isoformat()}: Completed {message} ({duration:.2f} sec.)")

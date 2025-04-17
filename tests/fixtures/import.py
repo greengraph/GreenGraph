@@ -1,45 +1,79 @@
 # %%
 import numpy as np
-from ecograph
+from ecograph.importers.databases.generic import _generic_graph_system_from_matrices
+import uuid
+from ecograph.utility.logging import logtimer
+import networkx as nx
 
 A_P = np.array([
-    [1.0, 0.0, 0.0, 5.7],
-    [2.0, 1.0, 7.2, 2.2],
-    [9.2, 3.3, 1.0, 0.0],
-    [0.4, 1.0, 1.2, 1.0]
+    [1.0, 0.0, 0.0],
+    [2.0, 1.0, 0.2],
+    [0.0, 3.3, 1.0],
 ])
 
 A_P_metadata = [
     {"name": "Product 1", "unit": "kg", "location": "CH", "code": "123abc"},
-    {"name": "Product 2", "unit": "kg", "location": "DE", "code": "456def"},
-    {"name": "Product 3", "unit": "kg", "location": "FR", "code": "789ghi"},
-    {"name": "Product 4", "unit": "kg", "location": "IT", "code": "012jkl"}
+    {"name": "Product 2", "unit": "kg", "location": "CH", "code": "456def"},
+    {"name": "Product 3", "unit": "kg", "location": "CH", "code": "789ghi"},
 ]
 
 A_S = np.array([
-    [0.1, 0.3, 0.1],
-    [0.4, 0.2, 0.6],
-    [0.2, 0.7, 0.3]
+    [0.2008, 0.0000, 0.0011, 0.0338],
+    [0.0010, 0.0658, 0.0035, 0.0219],
+    [0.0034, 0.0002, 0.0012, 0.0021],
+    [0.1247, 0.0684, 0.1801, 0.2319]
 ])
 
 A_S_metadata = [
-    {"name": "Sector A", "unit": "USD", "location": "CH",},
-    {"name": "Sector B", "unit": "USD", "location": "DE",},
-    {"name": "Sector C", "unit": "USD", "location": "FR",}
+    {"name": "Sector A", "unit": "CHF", "location": "CH",},
+    {"name": "Sector B", "unit": "CHF", "location": "CH",},
+    {"name": "Sector C", "unit": "CHF", "location": "CH",},
+    {"name": "Sector D", "unit": "CHF", "location": "CH",}
 ]
 
 B_P = np.array([
-    [3.5, 2.1, 4.0, 1.2],
-    [0.8, 1.5, 2.3, 3.7]
+    [3.5, 2.1, 4.0],
+    [0.8, 1.5, 0.0]
 ])
 
 B_P_metadata = [
-    {"name": "Emission 1", "unit": "kg(CO2 eq.)", "compartment": "air"},
-    {"name": "Emission 2", "unit": "kg(CO2 eq.)", "compartment": "air"},
+    {"name": "Emission 1 (Biosphere)", "unit": "kg(CO2 eq.)", "compartment": "air"},
+    {"name": "Emission 2 (Biosphere)", "unit": "kg(CO2 eq.)", "compartment": "air"},
 ]
 
 B_S = np.array([[1.2, 3.4, 5.6]])
 
 B_S_metadata = [
-    {"name": "Emission 3", "unit": "kg(CO2 eq.)", "compartment": "air"},
+    {"name": "Emission 3 (Satellite)", "unit": "kg(CO2 eq.)"},
 ]
+
+H = np.array([
+    [1.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0],
+    [0.0, 0.0, 1.0],
+    [0.0, 0.0, 0.0]
+])
+
+G = _generic_graph_system_from_matrices(
+    name_system="Test System",
+    convention="A",
+    matrix_technosphere=A_P,
+    matrix_biosphere=B_P,
+    list_dicts_technosphere_node_metadata=A_P_metadata,
+    list_dicts_biosphere_node_metadata=B_P_metadata,
+)
+
+# %%
+from ecograph.math.conversion import _generate_matrices_from_graph
+
+A, B = _generate_matrices_from_graph(
+    G,
+    technosphere_matrix_sorting_attributes=["system"],
+    biosphere_matrix_sorting_attributes=["system"],
+    dense=True
+)
+
+# %%
+
+GG = _generic_graph_system_from_matrices(
+    

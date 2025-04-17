@@ -29,7 +29,15 @@ def _generate_matrices_from_graph(
             column_order=technosphere_sorted_uuids,
             dtype=float,
             weight='flow',
-            format='csr'
+            format='dense'
+        )
+        A = xr.DataArray(
+            A,
+            dims=('rows', 'cols'),
+            coords={
+                'rows': technosphere_sorted_uuids,
+                'cols': technosphere_sorted_uuids,
+            },
         )
     with logtimer("Generating biosphere matrix."):
         B = nx.algorithms.bipartite.biadjacency_matrix(
@@ -38,49 +46,27 @@ def _generate_matrices_from_graph(
             column_order=technosphere_sorted_uuids,
             dtype=float,
             weight='flow',
-            format='csr'
+            format='dense'
         )
+        B = xr.DataArray(
+            B,
+            dims=('rows', 'cols'),
+            coords={
+                'rows': biosphere_sorted_uuids,
+                'cols': technosphere_sorted_uuids,
+            },
+        )
+
     with logtimer("Normalizing technosphere matrix ('I-A'-convention)."):
-        A = A.todense()
-        B = B.todense()
-        array_production = np.array([G.nodes[node]['production'] for node in list(G.nodes())])
+        array_production = np.array([G.nodes[node]['production'] for node in A.coords['rows'].values])
         Anorm = A / array_production
         Bnorm = B / array_production
     if dense:
         pass
     else:
-        Anorm = Anorm.tocsr()
-        Bnorm = Bnorm.tocsr()
-    
-    Anorm = xr.DataArray(
-        Anorm,
-        dims=('rows', 'cols'),
-        coords={
-            'rows': technosphere_sorted_uuids,
-            'cols': technosphere_sorted_uuids,
-        },
-    )
-    Anorm = Anorm.assign_coords(
-        system=[G.nodes[node].get('system') for node in technosphere_sorted_uuids],
-        uuid=technosphere_sorted_uuids,
-    )
-    Anorm = Anorm.set_index(
-        cols=['system', 'uuid'],
-        rows=['system', 'uuid'],
-    ))
-    
-    Bnorm = xr.DataArray(
-        Bnorm,
-        dims=('rows', 'cols'),
-        coords={
-            'rows': biosphere_sorted_uuids,
-            'cols': technosphere_sorted_uuids,
-        },
-    )
-    Bnorm = Bnorm.assign_coords(
-        system=[G.nodes[node].get('system') for node in technosphere_sorted_uuids],
-        uuid=technosphere_sorted_uuids,
-    )
-    Bnorm = Bnorm.set_index(cols=['system', 'uuid'])
+        #TODO how to combine xarray and sparse matrices?
+        #Anorm = Anorm.tocsr()
+        #Bnorm = Bnorm.tocsr()
+        pass
     
     return Anorm, Bnorm

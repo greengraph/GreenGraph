@@ -24,8 +24,8 @@ nav:
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   #custom_dir: docs/_overrides
-  logo: _static/logos/logo_ecograph.svg
-  favicon: _static/logos/logo_ecograph.svg
+  logo: _logos/logo_ecograph.svg
+  favicon: _logos/logo_ecograph.svg
   highlightjs: true
   navigation_depth: 4
   features:
