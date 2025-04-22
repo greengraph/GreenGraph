@@ -9,7 +9,8 @@ from tests.fixtures.matrices import (
 from greengraph.math.matrix import (
     calculate_production_vector,
     calculate_inventory_vector,
-    calculate_impact_vector
+    calculate_impact_vector,
+    calculate_inventory_vectors,
 )
 
 import xarray as xr
@@ -44,6 +45,8 @@ x = calculate_production_vector(
     }
 )
 
+# %%
+
 B = xr.DataArray(
     data=B_S,
     dims=('rows','cols'),
@@ -55,6 +58,15 @@ B = xr.DataArray(
 
 g = calculate_inventory_vector(
     x=x,
+    B=B
+)
+
+g_matrix = calculate_inventory_vectors(
+    x=x,
+    inventory_split={
+        'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
+        'system2': [A.coords['rows'][0].item(), A.coords['rows'][1].item()]
+    },
     B=B
 )
 

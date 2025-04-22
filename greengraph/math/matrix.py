@@ -26,7 +26,7 @@ def calculate_production_vector(
     np.ndarray
         Inventory vector.
     """
-    f = np.zeros(A.data.shape[0])
+    f = np.zeros((A.data.shape[0], 1))
     for node, value in demand.items():
         if np.isin(node, A.coords['rows'].values):
             f[A.coords['rows'].values == node] = value
@@ -74,6 +74,44 @@ def calculate_inventory_vector(
     return g
 
 
+def calculate_inventory_vectors(
+    x: xr.DataArray,
+    inventory_split: dict[str, list[str]],
+    B: xr.DataArray,
+) -> xr.DataArray:
+    """
+    abcd
+    """
+    list_arrays_split_vector = [
+        x.where(
+            cond=x.coords['rows'].isin(set(inventory_split[system])),
+            other=0.0
+        )
+        for system in inventory_split.keys()
+    ]
+
+    # Concatenate along 'system' dimension
+    x_matrix = xr.concat(
+        objs=list_arrays_split_vector,
+        dim='system'
+    )
+
+    # Transpose to make 'rows' the first dimension and 'system' the second
+    x_matrix = x_matrix.T
+
+    # Create g_matrix with the corrected x_matrix
+    g_matrix = xr.DataArray(
+        data=B.data @ x_matrix.data,
+        dims=('system', 'rows'),
+        coords={
+            'system': inventory_split.keys(),
+            'rows': B.coords['rows'].values
+        }
+    )
+
+    return g_matrix
+
+
 def calculate_impact_vector(
     g: xr.DataArray,
     Q: xr.DataArray,
@@ -95,22 +133,3 @@ def calculate_impact_vector(
     )
 
     return h
-
-def calculate_inventory_vectors(
-    x: xr.DataArray,
-    B: xr.DataArray
-) -> xr.DataArray:
-    dict_inventory_vectors_by_system = {}
-    for system in np.unique(B.coords['system'].values):
-        B_system = B.sel(col={'system': system})
-        x_system = x.sel(row={'system': system})
-        g_system = xr.DataArray(
-            B_system.data @ x_system.data,
-            dims=('rows'),
-            coords={
-                'rows': B.coords['rows'].values
-            }
-        )
-        dict_inventory_vectors_by_system[system] = g_system
-    
-    return dict_inventory_vectors_by_system
