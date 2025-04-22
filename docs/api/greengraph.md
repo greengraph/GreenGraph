@@ -1,1 +1,0 @@
-::: greengraph.core.greengraph

@@ -1,8 +1,5 @@
 # %%
 import numpy as np
-from greengraph.importers.databases.generic import _generic_graph_system_from_matrices
-import uuid
-from greengraph.utility.logging import logtimer
 import networkx as nx
 
 A_P = np.array([
@@ -53,27 +50,3 @@ H = np.array([
     [0.0, 0.0, 1.0],
     [0.0, 0.0, 0.0]
 ])
-
-G = _generic_graph_system_from_matrices(
-    name_system="Test System",
-    convention="A",
-    matrix_technosphere=A_P,
-    matrix_biosphere=B_P,
-    list_dicts_technosphere_node_metadata=A_P_metadata,
-    list_dicts_biosphere_node_metadata=B_P_metadata,
-)
-
-# %%
-from greengraph.math.conversion import _generate_matrices_from_graph
-
-A, B = _generate_matrices_from_graph(
-    G,
-    technosphere_matrix_sorting_attributes=["system"],
-    biosphere_matrix_sorting_attributes=["system"],
-    dense=True
-)
-
-# %%
-
-GG = _generic_graph_system_from_matrices(
-    

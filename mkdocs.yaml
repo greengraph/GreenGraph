@@ -18,8 +18,9 @@ nav:
   - API Reference:
   #  - Concordance: 'api/concordance.md'
   #  - Characterization: 'api/characterization.md'
-    - Core:
-      - greengraph: 'api/greengraph.md'
+    - Core: 'api/core.md'
+    - Math: 
+      - Matrix: 'api/math/matrix.md'
     - Import:
       - Databases:
         - Generic: 'api/importers/databases/generic.md'

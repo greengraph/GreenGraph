@@ -5,9 +5,14 @@ import pandas as pd
 import xarray as xr
 import networkx as nx
 from datetime import datetime
-from typing import Any, Literal
 import uuid
 from operator import itemgetter
+
+from greengraph.math.matrix import (
+    calculate_production_vector,
+    calculate_inventory_vector,
+    calculate_impact_vector
+)
 
 class CustomMultiDiGraph(nx.MultiDiGraph):
     r"""
@@ -431,8 +436,7 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         )
 
 
-
-class greengraph():
+class graph():
     def __init__(self):
         self.graph = CustomMultiDiGraph()
         self.matrices = {}
@@ -462,3 +466,68 @@ class greengraph():
     ) -> np.ndarray:
         
         vector_final_demand = np.zeros(self.graph.number_of_nodes())
+
+
+class matrices():
+    """
+    GreenGraph class to manage matrices generated from the graph.
+
+    Attributes
+    ----------
+    matrices : dict
+        A dictionary to store matrices generated from the graph.  
+        Note that each matrix is stored as a [`xarray.DataArray`](https://docs.xarray.dev/en/latest/generated/xarray.DataArray.html#xarray.DataArray) object.
+    metadata : dict
+        A dictionary to store metadata about the class instance.  
+        By default, the metadata dictionary contains:  
+        - `created`: Timestamp of class instance creation.  
+
+    Methods
+    -------
+    lca()
+        Computes the life cycle assessment (LCA) of the graph.
+    lcia()
+        Computes the life cycle impact assessment (LCIA) of the graph.
+
+    See Also
+    --------
+    [`xarray.DataArray`](https://docs.xarray.dev/en/latest/user-guide/data-structures.html)
+    """
+    def __init__(self):
+        self.matrices = {}
+        self.metadata = {
+            'created': datetime.now(),
+        }
+
+    def lca(
+        self,
+        demand: dict[str, float],
+    ) -> xr.DataArray:
+        """
+        Computes the life cycle assessment (LCA) of the graph.
+
+        $$
+        \mathbf{h} = \mathbf{Q} \cdot (\mathbf{I} - \mathbf{A})^{-1} \cdot \mathbf{f}
+        $$
+
+        Warnings
+        --------
+        Note that the production vector is computed using the $(\mathbf{I-A})^{-1}$ convention
+
+        References
+        ----------
+        heijungs and Suh
+        """
+        x = calculate_production_vector(
+            A=self.matrices['A'],
+            demand=demand
+        )
+        g = calculate_inventory_vector(
+            x=x,
+            B=self.matrices['B']
+        )
+        h = calculate_impact_vector(
+            x=x,
+            Q=self.matrices['Q']
+        )
+        return h
