@@ -5,3 +5,4 @@ markdown-exec
 mkdocs-include-markdown-plugin
 # requirements for interactive figures
 plotly-express
+mermaid2
