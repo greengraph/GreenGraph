@@ -4,7 +4,7 @@ import numpy as np
 import scipy as sp
 import xarray as xr
 import logging
-from ecograph.utility.logging import logtimer
+from greengraph.utility.logging import logtimer
 
 
 def calculate_production_vector(

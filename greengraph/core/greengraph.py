@@ -432,7 +432,7 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
 
 
 
-class ecograph():
+class greengraph():
     def __init__(self):
         self.graph = CustomMultiDiGraph()
         self.matrices = {}
@@ -462,5 +462,3 @@ class ecograph():
     ) -> np.ndarray:
         
         vector_final_demand = np.zeros(self.graph.number_of_nodes())
-
-# %%

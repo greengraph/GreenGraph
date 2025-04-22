@@ -7,12 +7,14 @@ from pathlib import Path
 import pathlib
 from pandas.api.types import is_numeric_dtype
 
+from greengraph.utility.logging import logtimer
+
 
 def _format_exiobase_matrices(
     path_exiobase_root_directory: Path
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Format EXIOBASE matrices for use in ecograph.
+    Format EXIOBASE matrices for use in greengraph.
 
     Parameters
     ----------
@@ -41,6 +43,7 @@ def _format_exiobase_matrices(
     df_A_metadata = df_A.iloc[:, [0, 1]].copy()
     df_A.drop(columns=[0, 1], inplace=True)
     df_A_metadata.columns = ['location', 'name']
+    df_A_metadata['unit'] = 'USD'
 
     df_S = pd.read_csv(
         path_exiobase_root_directory / 'satellite' / 'S.txt',
@@ -55,7 +58,7 @@ def _format_exiobase_matrices(
         skiprows=1,
         header=None
     )
-    df_S_metadata.columns = ['satellite', 'unit']
+    df_S_metadata.columns = ['name', 'unit']
 
     for df in [df_A, df_S]:
         if all(is_numeric_dtype(df[col]) for col in df.columns) == False:

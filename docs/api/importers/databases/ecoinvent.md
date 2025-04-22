@@ -1,0 +1,1 @@
+::: greengraph.importers.databases.ecoinvent

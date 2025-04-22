@@ -1,5 +1,5 @@
 # %%
-from ecograph.utility.logging import logtimer
+from greengraph.utility.logging import logtimer
 import networkx as nx
 import numpy as np
 import xarray as xr

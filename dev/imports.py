@@ -1,2 +1,2 @@
 # %%
-import ecograph
+import greengraph

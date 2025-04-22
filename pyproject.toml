@@ -3,12 +3,12 @@ requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ecograph"
+name = "greengraph"
 authors = [
-  { name="Michael Weinold", email="michaelphilippweinold+ecograph@gmail.com" }
+  { name="Michael Weinold", email="michaelphilippweinold+greengraph@gmail.com" }
 ]
 maintainers = [
-  { name="Michael Weinold", email="michaelphilippweinold+ecograph@gmail.com" }
+  { name="Michael Weinold", email="michaelphilippweinold+greengraph@gmail.com" }
 ]
 description = "A Python package for graph/matrix-based (hybrid) life-cycle calculations."
 readme = "README.md"
@@ -37,9 +37,9 @@ dependencies = [
 ]
 
 [project.urls]
-source = "https://github.com/michaelweinold/ecograph"
-homepage = "https://ecograph.readthedocs.io"
-tracker = "https://github.com/michaelweinold/ecograph"
+source = "https://github.com/michaelweinold/greengraph"
+homepage = "https://greengraph.readthedocs.io"
+tracker = "https://github.com/michaelweinold/greengraph"
 
 [project.optional-dependencies]
 # Getting recursive dependencies to work is a pain, this
@@ -53,21 +53,21 @@ testing = [
 [tool.setuptools]
 include-package-data = true
 packages = [
-  "ecograph",
-  "ecograph.core",
-  "ecograph.import",
-  "ecograph.import.characterization",
-  "ecograph.import.databases",
+  "greengraph",
+  "greengraph.core",
+  "greengraph.import",
+  "greengraph.import.characterization",
+  "greengraph.import.databases",
 ]
 
 [options.packages.find]
-where = ["ecograph"]
+where = ["greengraph"]
 
 [options.package_data]
-ecograph = ["py.typed"]
+greengraph = ["py.typed"]
 
 [tool.setuptools.dynamic]
-version = {attr = "ecograph.__version__"} 
+version = {attr = "greengraph.__version__"} 
 readme = {file = "README.md"}
 
 [tool.pytest.ini_options]

@@ -1,6 +1,6 @@
 # Notation and Diagrams
 
-Systems representing supply chains are beste understood when visualized using a well-defined diagrammatic notation. The `EcoGraph` package uses a notation formalized by Weinold in 2025. It defines the following elements, describing nodes and edges of the graph diagram:
+Systems representing supply chains are beste understood when visualized using a well-defined diagrammatic notation. The `greengraph` package uses a notation formalized by Weinold in 2025. It defines the following elements, describing nodes and edges of the graph diagram:
 
 | Image            | Type | Description       | Notes           |
 |------------------|-------|------------|-----------------|

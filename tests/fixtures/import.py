@@ -1,8 +1,8 @@
 # %%
 import numpy as np
-from ecograph.importers.databases.generic import _generic_graph_system_from_matrices
+from greengraph.importers.databases.generic import _generic_graph_system_from_matrices
 import uuid
-from ecograph.utility.logging import logtimer
+from greengraph.utility.logging import logtimer
 import networkx as nx
 
 A_P = np.array([
@@ -64,7 +64,7 @@ G = _generic_graph_system_from_matrices(
 )
 
 # %%
-from ecograph.math.conversion import _generate_matrices_from_graph
+from greengraph.math.conversion import _generate_matrices_from_graph
 
 A, B = _generate_matrices_from_graph(
     G,

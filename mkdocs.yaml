@@ -1,6 +1,6 @@
 # https://www.mkdocs.org/user-guide/configuration/
-site_name: EcoGraph Documentation
-repo_url: https://github.com/michaelweinold/ecograph
+site_name: GreenGraph Documentation
+repo_url: https://github.com/michaelweinold/greengraph
 copyright: © Paul Scherrer Institute (PSI) | Code under MIT License
 nav:
   - Home: 'index.md'
@@ -11,21 +11,28 @@ nav:
     - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
     - Hybrid Matrix Calculations: 'theory/calculations.md'
   - Structure:
-    - EcoGraph: 'structure/ecograph.md'
+    - greengraph: 'structure/greengraph.md'
   - Practice:
+    - Getting Started: 'practive/gettingstarted.md'
     - Working with the Graph: 'practice/graph.md'
-  - API Reference (Internal):
+  - API Reference:
   #  - Concordance: 'api/concordance.md'
   #  - Characterization: 'api/characterization.md'
     - Core:
-      - EcoGraph: 'api/ecograph.md'
+      - greengraph: 'api/greengraph.md'
     - Import:
-      - IMPACT World +: 'api/importers/impact_world_plus.md'
+      - Databases:
+        - Generic: 'api/importers/databases/generic.md'
+        - Ecoinvent: 'api/importers/databases/ecoinvent.md'
+        - Exiobase: 'api/importers/databases/exiobase.md'
+      - Charactization Methods:
+        - Generic: 'api/importers/characterization/generic.md'
+        - IMPACT World +: 'api/importers/characterization/iwp.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   #custom_dir: docs/_overrides
-  logo: _logos/logo_ecograph.svg
-  favicon: _logos/logo_ecograph.svg
+  logo: _logos/logo_greengraph.svg
+  favicon: _logos/logo_greengraph.svg
   highlightjs: true
   navigation_depth: 4
   features:
@@ -82,7 +89,7 @@ extra_css:
   - _css/extra.css
 
 watch:
-  - ecograph
+  - greengraph
 
 extra:
   generator: false

@@ -1,7 +1,7 @@
 # %%
 import pandas as pd
 import networkx as nx
-from ecograph.utility.logging import logtimer
+from greengraph.utility.logging import logtimer
 
 
 def _load_iwp_data(
@@ -424,3 +424,4 @@ def generate_iwp_characterization_matrix_ecoinvent_and_exiobase(
         )
 
     return df_both
+# %%

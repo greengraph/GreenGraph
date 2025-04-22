@@ -9,9 +9,9 @@ import logging
 from pathlib import Path
 import uuid
 from datetime import datetime
-from ecograph.utility.logging import logtimer
+from greengraph.utility.logging import logtimer
 
-from ecograph.utility.graph import from_biadjacency_matrix
+from greengraph.utility.graph import from_biadjacency_matrix
 
 
 def _generic_graph_system_from_matrices(
@@ -19,7 +19,6 @@ def _generic_graph_system_from_matrices(
     convention: str,
     matrix_technosphere: np.ndarray,
     matrix_biosphere: np.ndarray,
-    matrix_characterization: np.ndarray,
     list_dicts_technosphere_node_metadata: list[dict],
     list_dicts_biosphere_node_metadata: list[dict],
 ) -> nx.MultiDiGraph:
@@ -55,8 +54,6 @@ def _generic_graph_system_from_matrices(
         raise TypeError("All entries in the biosphere matrix must be numeric.")
     if not (matrix_technosphere >= 0).all():
         raise ValueError("All entries in the technosphere matrix must be non-negative.")
-    if not (matrix_biosphere >= 0).all():
-        raise ValueError("All entries in the biosphere matrix must be non-negative.")
     if not convention in ['I-A', 'A']:
         raise ValueError("Convention must be 'I-A' or 'A'.")
 
@@ -92,7 +89,10 @@ def _generic_graph_system_from_matrices(
         }
     )    
     
-    with logtimer("Creating MultiDiGraph from technosphere matrix."):
+    with logtimer("creating MultiDiGraph from technosphere matrix."):
+        logging.info(
+            f"# of nodes: {len(matrix_technosphere.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(matrix_technosphere) & (matrix_technosphere != 0))):,}"
+        )
         G = nx.from_numpy_array(
             matrix_technosphere.values,
             create_using=nx.MultiDiGraph,
@@ -101,7 +101,10 @@ def _generic_graph_system_from_matrices(
             nodelist=matrix_technosphere.coords['rows'].values,
         )
 
-    with logtimer("Creating MultiDiGraph from biosphere matrix."):
+    with logtimer("creating MultiDiGraph from biosphere matrix."):
+        logging.info(
+            f"# of nodes: {len(matrix_biosphere.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(matrix_biosphere) & (matrix_biosphere != 0))):,}"
+        )
         B = from_biadjacency_matrix(
             matrix=matrix_biosphere.values,
             nodes_axis_0=matrix_biosphere.coords['rows'].values,
@@ -111,7 +114,7 @@ def _generic_graph_system_from_matrices(
             create_using=nx.MultiDiGraph
         )
 
-    with logtimer("Setting node attributes."):
+    with logtimer("setting node attributes."):
         for node_metadata in list_dicts_technosphere_node_metadata:
             node_uuid = node_metadata['uuid']
             G.nodes[node_uuid]['index'] = node_metadata['index']
@@ -135,9 +138,77 @@ def _generic_graph_system_from_matrices(
                 if key not in explicitly_set_keys:
                     B.nodes[node_uuid][key] = value
 
-    with logtimer("Merging technosphere and biosphere graphs."):
+    with logtimer("merging technosphere and biosphere graphs."):
         GcomposeB = nx.compose(B, G)
         del G
         del B
 
     return GcomposeB
+
+# %%
+
+from greengraph.importers.databases import exiobase
+
+exio = exiobase._format_exiobase_matrices(Path('/Users/michaelweinold/data/IOT_2022_ixi'))
+
+# %%
+
+G = _generic_graph_system_from_matrices(
+    name_system='exiobase',
+    convention='I-A',
+    matrix_technosphere=exio['A'].to_numpy(),
+    matrix_biosphere=exio['S'].to_numpy(),
+    list_dicts_technosphere_node_metadata=exio['A_metadata'].to_dict('records'),
+    list_dicts_biosphere_node_metadata=exio['S_metadata'].to_dict('records'),
+)
+
+# %%
+
+from greengraph.importers.characterization.impact_world_plus import generate_iwp_characterization_matrix_exiobase
+
+Q = generate_iwp_characterization_matrix_exiobase(
+    type_iwp='expert_version',
+    version_iwp='2.1',
+)
+
+def add_characterization_to_graph(
+    name_method: str,
+    G: nx.MultiDiGraph,
+    matrix_characterization: np.ndarray,
+    list_dicts_characterization_node_metadata: list[dict],
+    list_dicts_biosphere_node_metadata: list[dict],
+) -> None:
+    
+    for idx, dict_impactcategory_metadata in enumerate(list_dicts_characterization_node_metadata):
+        dict_impactcategory_metadata['uuid'] = str(uuid.uuid4())
+        dict_impactcategory_metadata['index'] = idx
+        dict_impactcategory_metadata['method'] = name_method
+
+    for dict_biosphere_node in list_dicts_biosphere_node_metadata:
+        name = dict_biosphere_node["name"]
+        for node, attrs in G.nodes(data=True):
+            if attrs.get("name") == name:
+                dict_biosphere_node["uuid"] = node
+                break
+        else:
+            dict_biosphere_node["uuid"] = "No match found in graph!"
+
+    matrix_characterization = xr.DataArray(
+        matrix_characterization,
+        dims=['rows', 'cols'],
+        coords={
+            'rows': [node_metadata['uuid'] for node_metadata in list_dicts_characterization_node_metadata],
+            'cols': [node_metadata['uuid'] for node_metadata in list_dicts_biosphere_node_metadata]
+        }
+    )
+
+    return matrix_characterization
+
+out = add_characterization_to_graph(
+    name_method='iwp',
+    G=G,
+    matrix_characterization=Q.to_numpy(),
+    list_dicts_characterization_node_metadata=Q.index.to_frame().to_dict('records'),
+    list_dicts_biosphere_node_metadata=[{'name': col} for col in Q.columns],
+)
+

@@ -1,1 +1,0 @@
-::: ecograph.core.ecograph

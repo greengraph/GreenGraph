@@ -4,17 +4,18 @@ import logging
 
 logging.basicConfig(
     level=logging.INFO, 
-    format='EcoGraph | %(levelname)s | %(message)s',
+    format='greengraph | %(levelname)s | %(message)s',
     handlers=[logging.StreamHandler()]  # Output to console
 )
 
 @contextmanager
 def logtimer(message):
     start_time = datetime.now()
-    logging.info(f"{start_time.isoformat()}: Started {message}")
+    logging.info(f"{start_time.strftime('%H:%M:%S')}: Started {message}")
     try:
         yield
     finally:
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
-        logging.info(f"{end_time.isoformat()}: Completed {message} ({duration:.2f} sec.)")
+        minutes, seconds = divmod(duration, 60)
+        logging.info(f"{end_time.strftime('%H:%M:%S')}: Completed {message} ({int(minutes):02d}:{int(seconds):02d} min:sec)")
