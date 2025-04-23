@@ -10,7 +10,14 @@ def from_biadjacency_matrix(
     create_using: type = nx.MultiDiGraph,
 ) -> nx.MultiDiGraph:
     """
-    To be replaced with NetworkX function in future versions.
+
+    See Also
+    --------
+    - [Add `nodelist` to `from_biadjacency_matrix`](https://github.com/networkx/networkx/discussions/7960)
+
+    Warnings
+    --------
+    To be replaced with updated NetworkX function in future versions.
     """
     G = nx.empty_graph(n=0, create_using=create_using)
     G.add_nodes_from(nodes_axis_0, attr=attributes_nodes_axis_0)

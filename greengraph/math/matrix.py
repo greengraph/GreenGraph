@@ -1,13 +1,13 @@
-# %%
+"""This module provides matrix operations for the greengraph package.
+
+It includes utilities for matrix manipulation and calculations.
+"""
+
 import networkx as nx
 import numpy as np
 import scipy as sp
 import xarray as xr
 from greengraph.utility.logging import logtimer
-
-"""
-My fantastic module docstring
-"""
 
 def calculate_production_vector(
     A: xr.DataArray,

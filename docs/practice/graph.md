@@ -90,3 +90,14 @@ fig = go.Figure(data=[edge_trace, node_trace],
 print(fig.to_html(full_html=False, include_plotlyjs="cdn"))
 
 ```
+
+## `networkx` Algorithms
+
+Potentially relevant:
+
+ - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.shortest_paths.weighted.dijkstra_path.html#networkx.algorithms.shortest_paths.weighted.dijkstra_path
+ - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.shortest_augmenting_path.html#networkx.algorithms.flow.shortest_augmenting_path
+ - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.edmonds_karp.html#networkx.algorithms.flow.edmonds_karp
+ - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.maximum_flow.html#networkx.algorithms.flow.maximum_flow
+ 
+
