@@ -1,3 +1,7 @@
+r"""
+This module contains functions to turn properly prepared dataframes/etc.
+into a greengraph graph class.
+"""
 
 # %%
 import networkx as nx
@@ -22,8 +26,34 @@ def _generic_graph_system_from_matrices(
     list_dicts_technosphere_node_metadata: list[dict],
     list_dicts_biosphere_node_metadata: list[dict],
 ) -> nx.MultiDiGraph:
-    """
+    r"""
     Create a MultiDiGraph from technosphere and biosphere matrices.
+
+    
+    $$
+    \mathbf{A} = \begin{bmatrix}
+        a_{11} & a_{12} & a_{13} \\
+        a_{21} & a_{22} & a_{23} \\
+        a_{31} & a_{32} & a_{33}
+    \end{bmatrix}
+    $$
+
+    $$
+    \mathbf{B} = \begin{bmatrix}
+        b_{11} & b_{12} & b_{13} \\
+        b_{21} & b_{22} & b_{23} \\
+    \end{bmatrix}
+    $$
+
+    and metadata lists:
+
+    | index | name | unit | production |
+    |-------|------|------|-----------|
+    | 0     | A    | kg   | 1         |
+    | 1     | B    | kg   | 1         |
+    | 2     | C    | kg   | 1         |
+
+
 
     Parameters
     ----------

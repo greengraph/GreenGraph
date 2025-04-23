@@ -27,6 +27,7 @@ nav:
         - Generic: 'api/importers/databases/generic.md'
         - Ecoinvent: 'api/importers/databases/ecoinvent.md'
         - Exiobase: 'api/importers/databases/exiobase.md'
+        - USEEIO: 'api/importers/databases/useeio.md'
       - Charactization Methods:
         - Generic: 'api/importers/characterization/generic.md'
         - IMPACT World +: 'api/importers/characterization/iwp.md'
@@ -55,6 +56,12 @@ plugins:
           python:
             options:
               docstring_style: numpy
+              show_root_toc_entry: True
+              show_root_heading: true
+              heading_level: 2
+              show_source: true
+              filters: []
+
   - markdown-exec
   #- autorefs
   - include-markdown
