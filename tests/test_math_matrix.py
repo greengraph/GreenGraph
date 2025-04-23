@@ -83,7 +83,7 @@ g_matrix = calculate_inventory_vectors(
     x=x,
     inventory_split={
         'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
-        'system2': [A.coords['rows'][0].item(), A.coords['rows'][1].item()]
+        'system2': [A.coords['rows'][2].item(), A.coords['rows'][3].item()]
     },
     B=B
 )

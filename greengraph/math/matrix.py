@@ -70,7 +70,7 @@ def calculate_production_vector(
         Production vector $\vec{x}$.  
         $\text{dim}(\vec{x})=[N \times 1]$
     """
-    f = np.zeros((A.data.shape[0], 1))
+    f = np.zeros(A.data.shape[0])
 
     for node, value in demand.items():
         if np.isin(node, A.coords['rows'].values):
@@ -89,10 +89,9 @@ def calculate_production_vector(
 
     x = xr.DataArray(
         x,
-        dims=('rows', 'cols'),
+        dims='rows',
         coords={
             'rows': A.coords['rows'].values,
-            'cols': None
         }
     )
 
@@ -167,10 +166,9 @@ def calculate_inventory_vector(
 
     g = xr.DataArray(
         data=B.data @ x.data,
-        dims=('rows', 'cols'),
+        dims='rows',
         coords={
             'rows': B.coords['rows'].values,
-            'cols': None
         }
     )
 
@@ -182,33 +180,115 @@ def calculate_inventory_vectors(
     inventory_split: dict[str, list[str]],
     B: xr.DataArray,
 ) -> xr.DataArray:
-    """
-    abcd
-    """
-    list_arrays_split_vector = [
-        x.where(
-            cond=x.coords['rows'].isin(set(inventory_split[system])),
-            other=0.0
-        )
-        for system in inventory_split.keys()
-    ]
+    r"""
+    
 
-    # Concatenate along 'system' dimension
-    x_matrix = xr.concat(
-        objs=list_arrays_split_vector,
-        dim='system'
+
+    In an example system of 4 nodes, we have the following production vector:
+
+    $$
+    \vec{x} = \begin{bmatrix}
+        10.01 \\
+        20.02 \\
+        30.03 \\
+        40.04 \\
+    \end{bmatrix} {\color{gray}\begin{bmatrix}
+        \texttt{abc123} \\
+        \texttt{def456} \\
+        \texttt{ghi789} \\
+        \texttt{jkl012} \\
+    \end{bmatrix}}
+    $$
+
+    wherenodes `[abc123, def456]` belong to the first category, and nodes `[ghi789, jkl012]` to the second category.
+    We would therefore like to split up the production vector $\vec{x}$ into a matrix $\mathbf{x}$,
+    where each column contains the production of nodes beloging to a single category:
+
+    $$
+    \mathbf{x} = \begin{bmatrix}
+        1.24 & 0.00 \\
+        2.34 & 0.00 \\
+        0.00 & 3.45 \\
+        0.00 & 4.56 \\
+    \end{bmatrix}
+    $$
+
+    Instead of an inventory vector $\vec{b}$, a matrix of inventory vectors $\mathbf{g}$
+    can now be computed according to
+
+    $$
+    \mathbf{g} = \mathbf{B} \cdot \mathbf{x}
+    $$
+
+    where
+
+    | Symbol       | Dimension    | Description          |
+    |--------------|--------------|----------------------|
+    | $\mathbf{g}$ | $R \times C$ | Inventory matrix     |
+    | $\mathbf{B}$ | $R \times N$ | B-matrix             |
+    | $\mathbf{x}$ | $N \times C$ | Production matrix    |
+
+    and
+
+    | Index | Description                            |
+    |-------|----------------------------------------|
+    | $N$   | Number of nodes in the system          |
+    | $R$   | Number of rows in the B-matrix         |
+    | $C$   | Number of categories                   |
+
+
+    Notes
+    -----
+    Summing the inventory matrix $\mathbf{g}$ along the columns (`axis=1`)
+    returns the inventory vector $\vec{g}$.
+
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Production vector $\vec{x}$ of the system.  
+        $\text{dim}(\vec{x})=[N \times 1]$
+    inventory_split : dict[str, list[str]]
+        Dictionary of inventory split.  
+
+        | keys        | values        |
+        |-------------|---------------|
+        | category    | list of nodes |
+
+    B : np.ndarray
+        B-matrix $\mathbf{B}$ of the system.  
+        $\text{dim}(\mathbf{B})=[R \times N]$
+
+    Returns
+    -------
+    np.ndarray
+        Inventory vector $\mathbf{g}$.  
+        $\text{dim}(\mathbf{g})=[R \times C]$
+    """
+
+    x_matrix = xr.DataArray(
+        data=np.zeros(
+            shape=(
+                x.sizes['rows'],
+                len(inventory_split)
+            )
+        ),
+        dims=('rows', 'cols'),
+        coords={
+            'rows': x.coords['rows'].values,
+            'cols': list(inventory_split.keys())
+        }
     )
 
-    # Transpose to make 'rows' the first dimension and 'system' the second
-    x_matrix = x_matrix.T
+    for split_category, list_nodes in inventory_split.items():
+        x_matrix.loc[dict(rows=list_nodes, cols=split_category)] = x.loc[list_nodes]
 
-    # Create g_matrix with the corrected x_matrix
     g_matrix = xr.DataArray(
         data=B.data @ x_matrix.data,
-        dims=('system', 'rows'),
+        dims=('rows', 'cols'),
         coords={
-            'system': inventory_split.keys(),
-            'rows': B.coords['rows'].values
+            'rows': B.coords['rows'].values,
+            'cols': list(inventory_split.keys())
         }
     )
 
@@ -274,10 +354,9 @@ def calculate_impact_vector(
 
     h = xr.DataArray(
         data=Q.data @ g.data,
-        dims=('rows', 'cols'),
+        dims='rows',
         coords={
             'rows': Q.coords[Q.dims[0]],
-            'cols': None
         }
     )
 
