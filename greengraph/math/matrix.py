@@ -401,7 +401,7 @@ def calculate_impact_matrix(
     The function computes the matrix of impact vectors $\mathbf{h}$:
 
     $$
-    \mathbf{h} = \mathb{Q} \cdot \mathbf{g}
+    \mathbf{h} = \mathbf{Q} \cdot \mathbf{g}
     $$
 
     where

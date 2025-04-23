@@ -34,7 +34,7 @@ nav:
       - Graph: 'api/utility/graph.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
-  #custom_dir: docs/_overrides
+  custom_dir: docs/_overrides
   logo: _logos/logo_greengraph.svg
   favicon: _logos/logo_greengraph.svg
   highlightjs: true
