@@ -10,7 +10,8 @@ from greengraph.math.matrix import (
     calculate_production_vector,
     calculate_inventory_vector,
     calculate_impact_vector,
-    calculate_inventory_vectors,
+    calculate_inventory_matrix,
+    calculate_impact_matrix,
 )
 
 import xarray as xr
@@ -79,11 +80,17 @@ h = calculate_impact_vector(
 
 # %%
 
-g_matrix = calculate_inventory_vectors(
+g_matrix = calculate_inventory_matrix(
     x=x,
     inventory_split={
         'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
         'system2': [A.coords['rows'][2].item(), A.coords['rows'][3].item()]
     },
     B=B
+)
+
+
+h_matrix = calculate_impact_matrix(
+    g_matrix=g_matrix,
+    Q=Q
 )

@@ -3,7 +3,6 @@ import networkx as nx
 import numpy as np
 import scipy as sp
 import xarray as xr
-import logging
 from greengraph.utility.logging import logtimer
 
 """
@@ -16,7 +15,7 @@ def calculate_production_vector(
 ) -> xr.DataArray:
     r"""
     Given an A-matrix $\mathbf{A}$ and a dictionary of final demand $\vec{f}$,
-    calculate the production vector $\vec{x}$ of a system.
+    calculates the production vector $\vec{x}$ of a system.
 
     Implements the equation
 
@@ -104,7 +103,7 @@ def calculate_inventory_vector(
 ) -> xr.DataArray:
     r"""
     Given a production vector $\vec{x}$ and a B-matrix $\mathbf{B}$,
-    calculate the inventory vector $\vec{g}$ of a system.
+    calculates the inventory vector $\vec{g}$ of a system.
 
     Implements the equation
 
@@ -175,133 +174,13 @@ def calculate_inventory_vector(
     return g
 
 
-def calculate_inventory_vectors(
-    x: xr.DataArray,
-    inventory_split: dict[str, list[str]],
-    B: xr.DataArray,
-) -> xr.DataArray:
-    r"""
-    
-
-
-    In an example system of 4 nodes, we have the following production vector:
-
-    $$
-    \vec{x} = \begin{bmatrix}
-        10.01 \\
-        20.02 \\
-        30.03 \\
-        40.04 \\
-    \end{bmatrix} {\color{gray}\begin{bmatrix}
-        \texttt{abc123} \\
-        \texttt{def456} \\
-        \texttt{ghi789} \\
-        \texttt{jkl012} \\
-    \end{bmatrix}}
-    $$
-
-    wherenodes `[abc123, def456]` belong to the first category, and nodes `[ghi789, jkl012]` to the second category.
-    We would therefore like to split up the production vector $\vec{x}$ into a matrix $\mathbf{x}$,
-    where each column contains the production of nodes beloging to a single category:
-
-    $$
-    \mathbf{x} = \begin{bmatrix}
-        1.24 & 0.00 \\
-        2.34 & 0.00 \\
-        0.00 & 3.45 \\
-        0.00 & 4.56 \\
-    \end{bmatrix}
-    $$
-
-    Instead of an inventory vector $\vec{b}$, a matrix of inventory vectors $\mathbf{g}$
-    can now be computed according to
-
-    $$
-    \mathbf{g} = \mathbf{B} \cdot \mathbf{x}
-    $$
-
-    where
-
-    | Symbol       | Dimension    | Description          |
-    |--------------|--------------|----------------------|
-    | $\mathbf{g}$ | $R \times C$ | Inventory matrix     |
-    | $\mathbf{B}$ | $R \times N$ | B-matrix             |
-    | $\mathbf{x}$ | $N \times C$ | Production matrix    |
-
-    and
-
-    | Index | Description                            |
-    |-------|----------------------------------------|
-    | $N$   | Number of nodes in the system          |
-    | $R$   | Number of rows in the B-matrix         |
-    | $C$   | Number of categories                   |
-
-
-    Notes
-    -----
-    Summing the inventory matrix $\mathbf{g}$ along the columns (`axis=1`)
-    returns the inventory vector $\vec{g}$.
-
-
-    Parameters
-    ----------
-    x : np.ndarray
-        Production vector $\vec{x}$ of the system.  
-        $\text{dim}(\vec{x})=[N \times 1]$
-    inventory_split : dict[str, list[str]]
-        Dictionary of inventory split.  
-
-        | keys        | values        |
-        |-------------|---------------|
-        | category    | list of nodes |
-
-    B : np.ndarray
-        B-matrix $\mathbf{B}$ of the system.  
-        $\text{dim}(\mathbf{B})=[R \times N]$
-
-    Returns
-    -------
-    np.ndarray
-        Inventory vector $\mathbf{g}$.  
-        $\text{dim}(\mathbf{g})=[R \times C]$
-    """
-
-    x_matrix = xr.DataArray(
-        data=np.zeros(
-            shape=(
-                x.sizes['rows'],
-                len(inventory_split)
-            )
-        ),
-        dims=('rows', 'cols'),
-        coords={
-            'rows': x.coords['rows'].values,
-            'cols': list(inventory_split.keys())
-        }
-    )
-
-    for split_category, list_nodes in inventory_split.items():
-        x_matrix.loc[dict(rows=list_nodes, cols=split_category)] = x.loc[list_nodes]
-
-    g_matrix = xr.DataArray(
-        data=B.data @ x_matrix.data,
-        dims=('rows', 'cols'),
-        coords={
-            'rows': B.coords['rows'].values,
-            'cols': list(inventory_split.keys())
-        }
-    )
-
-    return g_matrix
-
-
 def calculate_impact_vector(
     g: xr.DataArray,
     Q: xr.DataArray,
 ) -> xr.DataArray:
     r"""
     Given an inventory vector $\vec{g}$ and a characterization matrix $\mathbf{Q}$,
-    calculate the impact vector $\vec{h}$ of a system.
+    calculates the impact vector $\vec{h}$ of a system.
 
     Implements the equation
 
@@ -361,4 +240,212 @@ def calculate_impact_vector(
     )
 
     return h
-# %%
+
+
+
+
+def calculate_inventory_matrix(
+    x: xr.DataArray,
+    inventory_split: dict[str, list[str]],
+    B: xr.DataArray,
+) -> xr.DataArray:
+    r"""
+    Given a production vector $\vec{x}$, a dictionary of
+    node categories with associated node `uuid`s and a B-matrix $\mathbf{B}$,
+    calculates the inventory vectors $\vec{g}_i$ of a system.
+    
+    In an example system of 4 nodes, we have the following production vector:
+
+    $$
+    \vec{x} = \begin{bmatrix}
+        10.01 \\
+        20.02 \\
+        30.03 \\
+        40.04 \\
+    \end{bmatrix} {\color{gray}\begin{bmatrix}
+        \texttt{abc123} \\
+        \texttt{def456} \\
+        \texttt{ghi789} \\
+        \texttt{jkl012} \\
+    \end{bmatrix}}
+    $$
+
+    where nodes `[abc123, def456]` belong to the first category, and nodes `[ghi789, jkl012]` to the second category.
+    
+    This functions splits up the production vector $\vec{x}$ into a matrix $\mathbf{x}$,
+    where each column contains the production of nodes beloging to a single category:
+
+    $$
+    \mathbf{x} = \begin{bmatrix}
+        1.24 & 0.00 \\
+        2.34 & 0.00 \\
+        0.00 & 3.45 \\
+        0.00 & 4.56 \\
+    \end{bmatrix}
+    $$
+
+    Instead of an inventory vector $\vec{b}$, a matrix of inventory vectors $\mathbf{g}$
+    is then computed according to
+
+    $$
+    \mathbf{g} = \mathbf{B} \cdot \mathbf{x}
+    $$
+
+    giving a matrix of inventory vectors $\mathbf{g}$:
+
+    $$
+    \mathbf{g} = \begin{bmatrix}
+        1.23 & 6.54 \\
+        2.34 & 7.65 \\
+        3.45 & 8.76 \\
+    \end{bmatrix}
+    $$
+
+    where
+
+    | Symbol       | Dimension    | Description          |
+    |--------------|--------------|----------------------|
+    | $\mathbf{g}$ | $R \times C$ | Inventory matrix     |
+    | $\mathbf{B}$ | $R \times N$ | B-matrix             |
+    | $\mathbf{x}$ | $N \times C$ | Production matrix    |
+
+    and
+
+    | Index | Description                            |
+    |-------|----------------------------------------|
+    | $N$   | Number of nodes in the system          |
+    | $R$   | Number of rows in the B-matrix         |
+    | $C$   | Number of categories                   |
+
+
+    Notes
+    -----
+    Summing the inventory matrix $\mathbf{g}$ along the columns (`axis=1`)
+    returns the inventory vector $\vec{g}$.
+
+    See Also
+    --------
+    [`greengraph.math.matrix.calculate_inventory_vector`][]
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Production vector $\vec{x}$ of the system.  
+        $\text{dim}(\vec{x})=[N \times 1]$
+    inventory_split : dict[str, list[str]]
+        Dictionary of inventory split.  
+
+        | keys        | values        |
+        |-------------|---------------|
+        | category    | list of nodes |
+
+    B : np.ndarray
+        B-matrix $\mathbf{B}$ of the system.  
+        $\text{dim}(\mathbf{B})=[R \times N]$
+
+    Returns
+    -------
+    np.ndarray
+        Inventory vector $\mathbf{g}$.  
+        $\text{dim}(\mathbf{g})=[R \times C]$
+    """
+
+    x_matrix = xr.DataArray(
+        data=np.zeros(
+            shape=(
+                x.sizes['rows'],
+                len(inventory_split)
+            )
+        ),
+        dims=('rows', 'cols'),
+        coords={
+            'rows': x.coords['rows'].values,
+            'cols': list(inventory_split.keys())
+        }
+    )
+
+    for split_category, list_nodes in inventory_split.items():
+        x_matrix.loc[dict(rows=list_nodes, cols=split_category)] = x.loc[list_nodes]
+
+    g_matrix = xr.DataArray(
+        data=B.data @ x_matrix.data,
+        dims=('rows', 'cols'),
+        coords={
+            'rows': B.coords['rows'].values,
+            'cols': list(inventory_split.keys())
+        }
+    )
+
+    return g_matrix
+
+
+def calculate_impact_matrix(
+    g_matrix: xr.DataArray,
+    Q: xr.DataArray,
+) -> xr.DataArray:
+    r"""
+    Given an inventory matrix $\mathbf{g}$ and a characterization matrix $\mathbf{Q}$,
+    calculates the matrix of impact vectors $\mathbf{h}$ of a system.
+
+    Continuing the example from [`greengraph.math.matrix.calculate_inventory_matrix`][],
+    for the matrix of inventory vectors $\mathbf{g}$:
+
+    $$
+    \mathbf{g} = \begin{bmatrix}
+        1.23 & 6.54 \\
+        2.34 & 7.65 \\
+        3.45 & 8.76 \\
+    \end{bmatrix}
+    $$
+
+    The function computes the matrix of impact vectors $\mathbf{h}$:
+
+    $$
+    \mathbf{h} = \mathb{Q} \cdot \mathbf{g}
+    $$
+
+    where
+
+    | Symbol       | Dimension    | Description             |
+    |--------------|--------------|-------------------------|
+    | $\mathbf{g}$ | $R \times C$ | inventory matrix        |
+    | $\mathbf{Q}$ | $L \times R$ | characterization matrix |
+    | $\mathbf{x}$ | $N \times C$ | production matrix       |
+
+    and
+
+    | Index | Description                            |
+    |-------|----------------------------------------|
+    | $L$   | Number of impact categories            |
+    | $R$   | Number of rows in the B-matrix         |
+
+    See Also
+    --------
+    [`greengraph.math.matrix.calculate_impact_vector`][]
+
+    Parameters
+    ----------
+    g_matrix : np.ndarray
+        Inventory matrix $\mathbf{g}$ of the system.  
+        $\text{dim}(\mathbf{g})=[R \times C]$
+    Q : np.ndarray
+        Characterization matrix $\mathbf{Q}$ of the system.  
+        $\text{dim}(\mathbf{Q})=[L \times R]$
+
+    Returns
+    -------
+    np.ndarray
+        Impact matrix $\mathbf{h}$.  
+        $\text{dim}(\mathbf{h})=[L \times C]$
+    """
+
+    h_matrix = xr.DataArray(
+        data=Q.data @ g_matrix.data,
+        dims=('rows', 'cols'),
+        coords={
+            'rows': Q.coords['rows'].values,
+            'cols': g_matrix.coords['cols'].values,
+        }
+    )
+
+    return h_matrix
