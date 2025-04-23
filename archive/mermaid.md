@@ -4,8 +4,8 @@ flowchart LR
         A["A"]
   end
  subgraph s1["Satellites"]
-        n2["⍺"]
-        n3["β"]
+        n2["β"]
+        n3["ɣ"]
   end
  subgraph s3["Impacts"]
         n4["I₁"]
@@ -25,4 +25,3 @@ flowchart LR
     style Sectors fill:transparent
     style s3 fill:transparent
 ```
-

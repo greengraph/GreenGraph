@@ -61,14 +61,6 @@ g = calculate_inventory_vector(
     B=B
 )
 
-g_matrix = calculate_inventory_vectors(
-    x=x,
-    inventory_split={
-        'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
-        'system2': [A.coords['rows'][0].item(), A.coords['rows'][1].item()]
-    },
-    B=B
-)
 
 Q = xr.DataArray(
     data=Q_S,
@@ -86,3 +78,12 @@ h = calculate_impact_vector(
 
 
 # %%
+
+g_matrix = calculate_inventory_vectors(
+    x=x,
+    inventory_split={
+        'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
+        'system2': [A.coords['rows'][0].item(), A.coords['rows'][1].item()]
+    },
+    B=B
+)

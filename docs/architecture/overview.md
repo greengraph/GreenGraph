@@ -3,15 +3,14 @@
 !!! note
     For a complete legend of the diagrammatic notation used in the figures of this section, see the [notation section](../theory/notation.md).
 
-<div align="center">
-    <img src="../../_media/terminology.svg" width="600">
-</div>
-
 Simple example system consisting of two sectors $(A,B)$ and two processes $(1,2)$, with one burden $(\alpha)$. Illustrated is the `greengraph` concept of a __system__: nodes which _belong together_. This same example system can also be rendered in this way:
 
 <div align="center">
     <img src="../../_media/terminology.svg" width="600">
 </div>
+
+In GreenGraph, all data related to the system is stored as a graph.
+
 
 \begin{align}
 \mathbf{A}_S &= \begin{bmatrix}
