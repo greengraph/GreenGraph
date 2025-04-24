@@ -113,362 +113,31 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
     doi:[10.1007/978-3-662-70107-2](https://doi.org/10.1007/978-3-662-70107-2)
 
     """
-    def add_technosphere_node(
+
+    def __init__(
         self,
-        name: str,
-        product: str=None,
-        amount: float=None,
-        unit: str = None,
-        location: str = None,
-        system: str = None,
-        index: int = None,
-        metadata: dict = None,
-    ) -> None:
-        """
-        Given a set of mandatory and optional node attributes, adds a technosphere node to the graph.
+        graph: nx.MultiDiGraph = None,
+        **attr
+    ):
+        super().__init__(graph, **attr) 
 
-        Notes
-        -----
-        The `uuid` attribute is automatically generated for every node.
-        This is a _random_ unique identifier (UUID v4).
-        
-        Raises
-        ------
 
-        """
-        node_data = {
-            'name': name,
-            'type': 'technosphere',
-            'product': product,
-            'amount': amount,
-            'unit': unit,
-            'location': location,
-            'system': system,
-            'index': index,
-            'metadata': metadata or {}
-        }
-        super().add_node(
-            node_for_adding=str(uuid.uuid4()),
-            **node_data
-        )
-
-    def add_biosphere_node(
+class graphcontainer():
+    def __init__(
         self,
-        name: str,
-        unit: str,
-        domain: str = None,
-        subdomain: str = None,
-        location: str = None,
-        system: str = None,
-        index: int = None,
-        metadata: dict = None,
-    ) -> None:
+        graph: CustomMultiDiGraph = None,
+        comment: str = None,
+    ):
+        r"""
+        ![Container Ship](https://upload.wikimedia.org/wikipedia/commons/2/25/Container-158362.svg)
         """
-        Given a set of mandatory and optional node attributes, adds a biosphere node to the graph.
-
-        Notes
-        -----
-        The `uuid` attribute is automatically generated for every node.
-        This is a _random_ unique identifier (UUID v4).
-        
-        Raises
-        ------
-        AttributeError
-            If the node already exists in the graph.
-        """
-        node_data = {
-            'name': name,
-            'type': 'biosphere',
-            'domain': domain,
-            'subdomain': subdomain,
-            'unit': unit,
-            'location': location,
-            'system': system,
-            'index': index,
-            'metadata': metadata or {}
-        }
-        super().add_node(
-            node_for_adding=str(uuid.uuid4()),
-            **node_data
-        )
-
-    def add_edge(
-        self,
-        source: str | dict,
-        target: str | dict,
-        key: str,
-        amount: float,
-        unit: str = None,
-        name: str = None,
-        metadata: dict = None
-    ) -> None:
-        """
-        Given a source and target node, adds an edge with custom attributes to the graph.
-
-        Notes
-        -----
-        The source and target nodes can either be given as UUID strings or as dictionaries of node attributes.
-
-        See Also
-        --------
-        [`networkx.MultiDiGraph.add_edge`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edge.html#networkx.MultiDiGraph.add_edge)
-
-        Raises
-        ------
-        AttributeError
-            If the source or target node does not exist in the graph.
-        AttributeError
-            If there are more than one node for either source or target corresponding to the given attributes. 
-        """
-        edge_data = {
-            'amount': amount,
-            'name': name,
-            'unit': unit,
-            'metadata': metadata or {}
-        }
-        if self.graph.node[target]['edges_as_matrix'] == True:
-            raise AttributeError(f"No edges to node {target} can be added. This is because it has no edges stored on the graph. Instead, edges are stored in a matrix.")
-        super().add_edge(
-            u_for_edge=source,
-            v_for_edge=target,
-            key=key,
-            **edge_data
-        )
-
-    def remove_node(
-        self,
-        uuid: str = None,
-        conditions: dict = None
-    ) -> None:
-        """
-        Given a node (=UUID string) or a dictionary of node attributes, removes the node from the graph.
-
-        Notes
-        -----
-        Nested attributes (such as attributes stored in the `metadata` dictionary)
-        can be accessed by prefixing the key with `metadata.`:
-        ```
-        conditions = {
-            'product': 'electricity',
-            'location': 'USA',
-            'metadata.database': 'ecoinvent'
-        }
-        ```
-
-        See Also
-        --------
-        [`networkx.MultiDiGraph.remove_node`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.remove_node.html#networkx.MultiDiGraph.remove_node)
-
-        Warnings
-        --------
-        If the node has edges stored in a matrix, it cannot be removed from the graph.
-        In this case, the entire system must be removed using the [][`remove_system`] method.
-
-        Parameters
-        ----------
-        uuid: str
-            The UUID of the node to remove.
-        conditions: dict
-            A dictionary of node attributes to match.  
-            `keys` are node attributes, `values` are expected values.
-
-        Raises
-        ------
-        AttributeError
-            If no nodes are found that match the condition.
-        AttributeError
-            If multiple nodes are found that match the condition.
-        AttributeError
-            If the node has edges stored in a matrix and can therefore not be deleted individually.
-        """
-        if (uuid is None and conditions is None) or (uuid is not None and conditions is not None):
-            raise AttributeError("EITHER a node (=UUID string) or conditions dictionary must be provided.")
-        if uuid is not None:
-            if self.graph.has_node(uuid) == False:
-                raise AttributeError(f"The node {uuid} does not exist in the graph.")
-            else:
-                pass
-        elif conditions is not None:
-            uuid = self.get_node_by_attributes(conditions)        
-        if self.graph[uuid]['edges_as_matrix'] == True:
-            raise AttributeError(f"The individual node {node} cannot be removed no edges stored on the graph. This is because its edges are stored in a matrix.")
-        else:
-            self.graph.remove_node(uuid)
-
-    def remove_system(
-        self,
-        system: str
-    ) -> None:
-        """
-        Given a system name (=node attribute `system`), removes all nodes of the system from the graph.
-        
-        Parameters
-        ----------
-        system: str
-            The name of the system to remove.
-        
-        Raises
-        ------
-        AttributeError
-            If no nodes are found that match the condition.        
-        """
-        list_of_nodes = [node for node, attrs in self.graph.nodes(data=True) if attrs['system'] == system]
-        if len(list_of_nodes) == 0:
-            raise AttributeError(f"No nodes found with the given system name.")
-        self.graph.remove_nodes_from(list_of_nodes)
-
-
-    def get_node_by_attributes(
-        self,
-        conditions: dict
-    ) -> str:
-        """
-        Given a dictionary of node attributes, returns the node (=UUID string) that matches all conditions.
-
-        Notes
-        -----
-        Nested attributes (such as attributes stored in the `metadata` dictionary)
-        can be accessed by prefixing the key with `metadata.`:
-        ```
-        conditions = {
-            'product': 'electricity',
-            'location': 'USA',
-            'metadata.database': 'ecoinvent'
-        }
-        ```
-
-        Parameters
-        ----------
-        conditions: dict
-            A dictionary of node attributes to match.  
-            `keys` are node attributes, `values` are expected values.
-
-        Raises
-        ------
-        AttributeError
-            If no nodes are found that match the condition.
-        AttributeError
-            If multiple nodes are found that match the condition.
-
-        Returns
-        -------
-        str
-            The node (=UUID string) that matches the conditions.
-        """
-
-        def _condition_met(node: dict):
-            for key_expected, value_expected in conditions.items():
-                if key_expected.startswith('metadata.'):
-                    subkey_expected = key_expected.split('.', 1)[1]
-                    if 'metadata' not in node or subkey_expected not in node['metadata']:
-                        return False
-                    value_actual = node['metadata'][subkey_expected]
-                else:
-                    if key_expected not in node:
-                        return False
-                    else:
-                        value_actual = node[key_expected]
-                
-                if value_actual != value_expected:
-                    return False
-                else:
-                    return True
-
-        list_of_nodes = [(node, data) for node, data in self.nodes(data=True) if _condition_met(node)]
-
-        if len(list_of_nodes) == 0:
-            raise AttributeError(f"No nodes found with the given attributes.")
-        elif len(list_of_nodes) > 1:
-            raise AttributeError(f"Multiple nodes found with the given attributes. Please refine your attributes.")
-        else:
-            return list_of_nodes[0][0]
-        
-
-    def sort_nodes_by_attributes(
-        self,
-        list_attributes: list[str],
-        reverse: bool = False,
-    ) -> list[str]:
-        """
-        Sorts a list of dictionaries by the specified keys in ascending order.
-
-        Parameters:
-        data (list): A list of dictionaries to sort.
-        keys (list): A list of keys to sort by, in order of priority.
-
-        Returns:
-        list: A new list of dictionaries sorted by the specified keys.
-        """
-        return sorted(
-            iterable=[node_data for node_uuid, node_data in self.graph.nodes],
-            key=itemgetter(*list_attributes),
-            reverse=reverse
-        )
-        
-
-    def _generate_raw_matrix_from_graph(
-        self,
-        systems: list[str] = None,
-        matrix_index_ordering: list[tuple[str, str]] = None,
-    ) -> np.ndarray:
-        """
-        _extended_summary_
-
-        Parameters
-        ----------
-        matrix_index_ordering : list[tuple[str, str]], optional
-            A list of tuples representing the order of nodes in the matrix, by default None
-
-        Returns
-        -------
-        np.ndarray
-            A NumPy array representing the adjacency matrix of the graph
-        """
-        nodelist = self.graph.nodes()
-        return nx.to_numpy_array(
-            G=self.graph.edge_subgraph(
-                (u, v, key) for u, v, key in self.graph.edges(keys=True) if key != 'concordance'
-            ),
-            nodelist=matrix_index_ordering,
-            dtype=np.float64,
-            weight='weight',
-            nonedge=0.0,
-        )
-
-
-class graph():
-    def __init__(self):
-        self.graph = CustomMultiDiGraph()
-        self.matrices = {}
+        self.graph = CustomMultiDiGraph(graph)
         self.metadata = {
             'created': datetime.now(),
-            'comment': None,
+            'comment': comment,
         }
 
-    def random(self):
-        """
-        Returns a view of a random node from the graph.
-
-        See Also
-        --------
-        [`networkx.utils.arbitrary_element`](https://networkx.org/documentation/stable/reference/generated/networkx.utils.misc.arbitrary_element.html#networkx.utils.misc.arbitrary_element)  
-        [`networkx.classes.reportviews.NodeDataView`](https://github.com/networkx/networkx/blob/e3542acf18c53d07f80a5b4c17d50218d7259469/networkx/classes/reportviews.py#L287)
-
-        Returns
-        -------
-        
-        """
-        return self.graph.nodes(nx.utils.arbitrary_element(self.graph.nodes()))
-    
-    def compute_production_vector(
-        self,
-        node: str,
-    ) -> np.ndarray:
-        
-        vector_final_demand = np.zeros(self.graph.number_of_nodes())
-
-
-class matrices():
+class matrixcontainer():
     """
     GreenGraph class to manage matrices generated from the graph.
 
@@ -503,7 +172,7 @@ class matrices():
         self,
         demand: dict[str, float],
     ) -> xr.DataArray:
-        """
+        r"""
         Computes the life cycle assessment (LCA) of the graph.
 
         $$
@@ -531,3 +200,27 @@ class matrices():
             Q=self.matrices['Q']
         )
         return h
+    
+
+# %%
+from greengraph.importers.databases.inputoutput import useeio
+from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
+
+
+data_useeio = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
+
+G = graph_system_from_input_output_matrices(
+    name_system='useeio',
+    convention='I-A',
+    ignore_matrix_dimension_errors=False,
+    matrix_production=data_useeio['A'].to_numpy(),
+    matrix_extension=data_useeio['B'].to_numpy(),
+    matrix_characterization=data_useeio['C'].to_numpy(),
+    list_dicts_production_node_metadata=data_useeio['dicts_A_metadata'],
+    list_dicts_extension_node_metadata=data_useeio['dicts_B_metadata'],
+    list_dicts_characterization_node_metadata=data_useeio['dicts_C_metadata']
+)
+
+# %%
+
+gg = graphcontainer(G)
