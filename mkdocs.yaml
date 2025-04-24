@@ -26,8 +26,7 @@ nav:
       - Databases:
         - Generic: 'api/importers/databases/generic.md'
         - Ecoinvent: 'api/importers/databases/ecoinvent.md'
-        - Exiobase: 'api/importers/databases/exiobase.md'
-        - USEEIO: 'api/importers/databases/useeio.md'
+        - InputOutput: 'api/importers/databases/inputoutput.md'
       - Charactization Methods:
         - Generic: 'api/importers/characterization/generic.md'
         - IMPACT World +: 'api/importers/characterization/iwp.md'
