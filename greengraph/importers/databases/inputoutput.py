@@ -1,14 +1,9 @@
-r"""
-> "US Environmentally-Extended Input-Output (USEEIO) models are combined economic-environmental models.
-> The models use data on inputs to and outputs from industries and their final consumption and value added in the form of input-output tables from the Bureau of Economic Analysis (BEA).
-> These tables are paired with environmental data on resource use and releases of pollutants from various public sources in the form of satellite tables,
-> as well as indicators of potential environmental and economic impact, using standard algorithms from input-output analysis."  
-
-[United States Environmental Protection Agency (EPA) description of the _US Environmentally-Extended Input-Output (USEEIO) Technical Content_](https://www.epa.gov/land-research/us-environmentally-extended-input-output-useeio-technical-content)
-"""
+# %%
 
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 import requests
+import zipfile
 from pathlib import Path
 from io import BytesIO
 from greengraph.utility.logging import logtimer
@@ -17,6 +12,13 @@ from greengraph.utility.logging import logtimer
 class useeio:
     """
     Class for loading and formatting the USEEIO dataset.
+
+    > "US Environmentally-Extended Input-Output (USEEIO) models are combined economic-environmental models.
+    > The models use data on inputs to and outputs from industries and their final consumption and value added in the form of input-output tables from the Bureau of Economic Analysis (BEA).
+    > These tables are paired with environmental data on resource use and releases of pollutants from various public sources in the form of satellite tables,
+    > as well as indicators of potential environmental and economic impact, using standard algorithms from input-output analysis."  
+
+    [United States Environmental Protection Agency (EPA) description of the _US Environmentally-Extended Input-Output (USEEIO) Technical Content_](https://www.epa.gov/land-research/us-environmentally-extended-input-output-useeio-technical-content)
     """
 
     _available_versions = ['2.0.1-411']
@@ -43,7 +45,7 @@ class useeio:
 
         Warning
         -------
-        USEEIO data for a single version is ~50MB. The download may take some time depending on your internet connection.
+        USEEIO data for a single version is ~50MB. The download may take some time [depending on your internet connection](https://en.wikipedia.org/wiki/IP_over_Avian_Carriers).
 
         See Also
         --------
@@ -77,10 +79,10 @@ class useeio:
         path_useeio: Path
     ) -> pd.DataFrame:
         r"""
-        Given a path to a USEEIO Excel file, function extracts the matrices and metadata from the file
+        Given a path to a USEEIO Excel file, extracts the matrices and metadata from the file
         and returns the $\mathbf{A}, \mathbf{B}, \mathbf{C}$ matrices and metadata as lists of dictionaries.
 
-        See Also
+        References
         --------
         - Yang, Yi, et al.
         "USEEIO: A new and transparent United States environmentally-extended input-output model."
@@ -189,4 +191,180 @@ class useeio:
             'sector_metadata': dict_sector_metadata,
             'flow_metadata': dict_flow_metadata,
             'indicator_metadata': dict_indicator_metadata
+        }
+    
+
+class exiobase:
+    """
+    Class for loading and formatting the Exiobase dataset.
+
+    > "EXIOBASE 3 provides a time series of environmentally extended multi-regional input-output (EE MRIO) tables
+    > ranging from 1995 to a recent year for 44 countries (28 EU member plus 16 major economies) and five rest of the world regions.
+    > EXIOBASE 3 builds upon the previous versions of EXIOBASE by using rectangular supply-use tables (SUT)
+    > in a 163 industry by 200 products classification as the main building blocks.
+    > The tables are provided in current, basic prices (Million EUR).
+
+    [EXIOBASE 3 description on Zenodo](https://doi.org/10.5281/zenodo.3583070)
+    """
+
+    _available_versions = {
+        '3.8.2': '5589597',
+    }
+    
+    @staticmethod
+    def list_available_versions() -> list[str]:
+        """
+        Lists the available versions of the Exiobase dataset.
+
+        Returns
+        -------
+        list[str]
+            A list of available versions of the Exiobase dataset.
+        """
+        return list(exiobase._available_versions.keys())
+    
+    @staticmethod
+    def load_exiobase_data_from_zenodo(
+        version: str,
+        type: str,
+        year: int
+    ) -> dict:
+        """
+        Given a version string of the Exiobase dataset, downloads the corresponding data from the Zenodo repository
+        and passes it to the [`greengraph.importers.databases.inputoutput.exiobase.format_exiobase_matrices`][] function to extract the matrices and metadata.
+
+        Warning
+        -------
+        Exiobase data for a single version is ~700MB. The download may take some time [depending on your internet connection](https://en.wikipedia.org/wiki/IP_over_Avian_Carriers).
+
+        See Also
+        --------
+        [EXIOBASE 3](https://doi.org/10.5281/zenodo.3583070) on Zenodo
+
+        Parameters
+        ----------
+        version : str
+            The version of Exiobase to use. Must be one of the available versions.
+            See [`greengraph.importers.databases.inputoutput.exiobase.list_available_versions`][] for a list of available versions.
+        type : str
+            The type of Exiobase data to load. Must be either `ixi` (=industry by industry) or `pxp` (=product by product).
+        year : int
+            The year of Exiobase data to load. Must be one of the years available in the Exiobase dataset.
+        
+        Returns
+        -------
+        dict
+            A dictionary containing the USEEIO data matrices and metadata.
+            See [`greengraph.importers.databases.inputoutput.useeio.format_useeio_matrices`][] for details on the structure of the returned dictionary.
+
+        Raises
+        ------
+        HTTPError
+            If the request to download the USEEIO data fails.
+        """
+
+        if type not in ['ixi', 'pxp']:
+            raise ValueError("type must be either 'ixi' or 'pxp'")
+
+        with logtimer(f"downloading Exiobase data (v{version}) from Zenodo."):
+            download = requests.get(f"https://zenodo.org/records/{exiobase._available_versions[version]}/files/IOT_{year}_{type}.zip?download=1")
+            download.raise_for_status()
+            with zipfile.ZipFile(BytesIO(download.content), 'r') as zip:
+                file_A = zip.extract(f"IOT_{year}_{type}/A.txt")
+                file_S = zip.extract(f"IOT_{year}_{type}/satellite/S.txt")
+                file_S_metadata = zip.extract(f"IOT_{year}_{type}/satellite/unit.txt")
+                download.close()
+                del download
+                del zip
+        
+        return exiobase.format_exiobase_matrices(
+            path_A=Path(file_A),
+            path_S=Path(file_S),
+            path_S_metadata=Path(file_S_metadata)
+        )
+
+    @staticmethod
+    def format_exiobase_matrices(
+        path_A: Path,
+        path_S: Path,
+        path_S_metadata: Path
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Given a path to the relevant Exiobase txt-files, extracts the matrices and metadata from the files
+        and returns the $\mathbf{A}$ and $\mathbf{B}$ matrices and metadata as lists of dictionaries.
+
+        References
+        ----------
+        - Stadler, Konstantin, et al.
+        "EXIOBASE 3: Developing a time series of detailed environmentally extended multi-regional input-output tables."
+        _Journal of Industrial Ecology_ 22.3 (2018): 502-515.
+        doi:[10.1111/jiec.12715](https://doi.org/10.1111/jiec.12715)
+        - [EXIOBASE 3 datasets on Zenodo](https://doi.org/10.5281/zenodo.3583070)
+
+        Parameters
+        ----------
+        path_A : Path
+            Path to the Exiobase A matrix file. This can be a local file path or a BytesIO object.  
+            Usually located at `IOT_{year}_{type}/A.txt` in the Exiobase zip file.
+        path_S : Path
+            Path to the Exiobase S matrix file. This can be a local file path or a BytesIO object.  
+            Usually located at `IOT_{year}_{type}/satellite/S.txt` in the Exiobase zip file.
+        path_S_metadata : Path
+            Path to the Exiobase S metadata file. This can be a local file path or a BytesIO object.  
+            Usually located at `IOT_{year}_{type}/satellite/unit.txt` in the Exiobase zip file.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the Exiobase data matrices and metadata.
+
+            | Key                 | Description                                                                               |
+            |---------------------|-------------------------------------------------------------------------------------------|
+            | A                   | $\mathbf{A}$ matrix                                                                       |
+            | S                   | $\mathbf{B}$ matrix                                                                       |
+            | sector_metadata     | Metadata for the sectors in the model (`name`, `location`, `unit`)                        |
+            | flow_metadata       | Metadata for the flows in the model (`name`, `unit`)                                      |
+        """
+        with logtimer(f"extracting Exiobase data from txt files."):
+            df_A = pd.read_csv(
+                path_A,
+                delimiter='\t',
+                skiprows=3,
+                header=None
+            )
+            df_A_metadata = df_A.iloc[:, [0, 1]].copy()
+            df_A.drop(columns=[0, 1], inplace=True)
+            df_A_metadata.columns = ['location', 'name']
+            df_A_metadata['unit'] = 'USD'
+
+            df_S = pd.read_csv(
+                path_S,
+                delimiter='\t',
+                skiprows=3,
+                header=None
+            )
+            df_S.drop(columns=[0], inplace=True)
+            df_S_metadata = pd.read_csv(
+                path_S_metadata,
+                delimiter='\t',
+                skiprows=1,
+                header=None
+            )
+            df_S_metadata.columns = ['name', 'unit']
+
+        for df in [df_A, df_S]:
+            if all(is_numeric_dtype(df[col]) for col in df.columns) == False:
+                raise TypeError("Warning! Not all extracted elements are numeric!")
+        if df_A.shape[0] != df_A.shape[1]:
+            raise ValueError("Warning! Technosphere matrix must be square.")
+        if df_A.shape[0] != df_A_metadata.shape[0]:
+            raise ValueError("Warning! Matrix technosphere shape does not match metadata length.")
+        if df_S.shape[0] != df_S_metadata.shape[0]:
+            raise ValueError("Warning! Matrix biosphere shape does not match metadata length.")
+
+        return {
+            'A': df_A,
+            'S': df_S,
+            'A_metadata': df_A_metadata,
+            'S_metadata': df_S_metadata
         }
