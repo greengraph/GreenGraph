@@ -170,7 +170,7 @@ def graph_system_from_input_output_matrices(
             create_using=nx.MultiDiGraph,
             parallel_edges=False,
             edge_attr='flow',
-            nodelist=matrix_production.coords['rows'].values,
+            nodelist=matrix_production.coords['rows'].values.tolist(),
         )
 
     with logtimer("creating MultiDiGraph from biosphere matrix."):
@@ -179,8 +179,8 @@ def graph_system_from_input_output_matrices(
         )
         B = from_biadjacency_matrix(
             matrix=matrix_extension.values,
-            nodes_axis_0=matrix_extension.coords['rows'].values,
-            nodes_axis_1=matrix_extension.coords['cols'].values,
+            nodes_axis_0=matrix_extension.coords['rows'].values.tolist(),
+            nodes_axis_1=matrix_extension.coords['cols'].values.tolist(),
             attributes_nodes_axis_0={'type': 'biosphere'},
             attributes_nodes_axis_1={'type': 'technosphere'},
             create_using=nx.MultiDiGraph
@@ -192,8 +192,8 @@ def graph_system_from_input_output_matrices(
         )
         Q = from_biadjacency_matrix(
             matrix=matrix_characterization.values,
-            nodes_axis_0=matrix_characterization.coords['rows'].values,
-            nodes_axis_1=matrix_characterization.coords['cols'].values,
+            nodes_axis_0=matrix_characterization.coords['rows'].values.tolist(),
+            nodes_axis_1=matrix_characterization.coords['cols'].values.tolist(),
             attributes_nodes_axis_0={'type': 'impact'},
             attributes_nodes_axis_1={'type': 'biosphere'},
             create_using=nx.MultiDiGraph
@@ -219,20 +219,3 @@ def graph_system_from_input_output_matrices(
         del GcomposeB
 
     return GBcomposeQ
-
-# %%
-
-from greengraph.importers.databases import exiobase
-
-exio = exiobase._format_exiobase_matrices(Path('/Users/michaelweinold/data/IOT_2022_ixi'))
-
-# %%
-
-G = _generic_graph_system_from_matrices(
-    name_system='exiobase',
-    convention='I-A',
-    matrix_production=exio['A'].to_numpy(),
-    matrix_extension=exio['S'].to_numpy(),
-    list_dicts_production_node_metadata=exio['A_metadata'].to_dict('records'),
-    list_dicts_extension_node_metadata=exio['S_metadata'].to_dict('records'),
-)

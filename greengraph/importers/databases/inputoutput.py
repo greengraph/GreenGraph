@@ -1,5 +1,3 @@
-# %%
-
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 import requests
@@ -82,6 +80,11 @@ class useeio:
         Given a path to a USEEIO Excel file, extracts the matrices and metadata from the file
         and returns the $\mathbf{A}, \mathbf{B}, \mathbf{C}$ matrices and metadata as lists of dictionaries.
 
+        Warnings
+        --------
+        The $\mathbf{A}$ matrix of the USEEIO model contains some sign-errors (negative values).
+        In the current implementation, these values are corrected by simply changin the sign.
+
         References
         --------
         - Yang, Yi, et al.
@@ -116,7 +119,7 @@ class useeio:
                 header=0,
                 index_col=0,
                 engine='openpyxl',
-            )
+            ).abs()
             df_B = pd.read_excel(
                 io=path_useeio,
                 sheet_name='B',
@@ -131,21 +134,21 @@ class useeio:
                 index_col=0,
                 engine='openpyxl',
             )
-            df_sector_metadata = pd.read_excel(
+            df_A_metadata = pd.read_excel(
                 io=path_useeio,
                 sheet_name='commodities_meta',
                 header=0,
                 index_col=1,
                 engine='openpyxl',
             )
-            df_indicator_metadata = pd.read_excel(
+            df_C_metadata = pd.read_excel(
                 io=path_useeio,
                 sheet_name='indicators',
                 header=0,
                 index_col=1,
                 engine='openpyxl',
             )
-            df_flow_metadata = pd.read_excel(
+            df_B_metadata = pd.read_excel(
                 io=path_useeio,
                 sheet_name='flows',
                 header=0,
@@ -159,18 +162,18 @@ class useeio:
                     'Context': 'context',
                     'Unit': 'unit'
                 }
-            df_flow_metadata = df_flow_metadata.rename(columns=columns_flow_metadata)   
-            df_flow_metadata = df_flow_metadata[columns_flow_metadata.values()]
-            dict_flow_metadata = df_flow_metadata.to_dict(orient='records')
+            df_B_metadata = df_B_metadata.rename(columns=columns_flow_metadata)   
+            df_B_metadata = df_B_metadata[columns_flow_metadata.values()]
+            dicts_B_metadata = df_B_metadata.to_dict(orient='records')
 
             columns_sector_metadata = {
                     'Name': 'name',
                     'Location': 'location',
                 }
-            df_sector_metadata = df_sector_metadata.rename(columns=columns_sector_metadata)
-            df_sector_metadata = df_sector_metadata[columns_sector_metadata.values()]
-            dict_sector_metadata = df_sector_metadata.to_dict(orient='records')
-            for sector in dict_sector_metadata:
+            df_A_metadata = df_A_metadata.rename(columns=columns_sector_metadata)
+            df_A_metadata = df_A_metadata[columns_sector_metadata.values()]
+            dicts_A_metadata = df_A_metadata.to_dict(orient='records')
+            for sector in dicts_A_metadata:
                 sector['unit'] = 'USD'
 
             columns_indicator_metadata = {
@@ -180,17 +183,17 @@ class useeio:
                 'Group': 'group',
                 'SimpleName': 'description'
             }
-            df_indicator_metadata = df_indicator_metadata.rename(columns=columns_indicator_metadata)
-            df_indicator_metadata = df_indicator_metadata[columns_indicator_metadata.values()]
-            dict_indicator_metadata = df_indicator_metadata.to_dict(orient='records')
+            df_C_metadata = df_C_metadata.rename(columns=columns_indicator_metadata)
+            df_C_metadata = df_C_metadata[columns_indicator_metadata.values()]
+            dicts_C_metadata = df_C_metadata.to_dict(orient='records')
 
         return {
             'A': df_A,
             'B': df_B,
             'C': df_C,
-            'sector_metadata': dict_sector_metadata,
-            'flow_metadata': dict_flow_metadata,
-            'indicator_metadata': dict_indicator_metadata
+            'dicts_A_metadata': dicts_A_metadata,
+            'dicts_B_metadata': dicts_B_metadata,
+            'dicts_C_metadata': dicts_C_metadata
         }
     
 
@@ -289,7 +292,7 @@ class exiobase:
         path_S: Path,
         path_S_metadata: Path
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """
+        r"""
         Given a path to the relevant Exiobase txt-files, extracts the matrices and metadata from the files
         and returns the $\mathbf{A}$ and $\mathbf{B}$ matrices and metadata as lists of dictionaries.
 
