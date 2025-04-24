@@ -18,7 +18,7 @@ from greengraph.utility.logging import logtimer
 from greengraph.utility.graph import from_biadjacency_matrix
 
 
-def generic_graph_system_from_matrices(
+def graph_system_from_input_output_matrices(
     name_system: str,
     convention: str,
     ignore_matrix_dimension_errors: bool,
