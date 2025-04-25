@@ -282,6 +282,6 @@ gg = graphcontainer(G)
 
 [gg.graph.nodes[i]['name'] for i in nx.algorithms.shortest_path(
     G=gg.graph,
-    source=gg.graph.get_node_by_attributes({'name':'Sports'}),
-    target=gg.graph.get_node_by_attributes({'name':'Postal service'}),
+    source=gg.graph.get_node_by_attributes({'name':'Wireless telecommunications'}),
+    target=gg.graph.get_node_by_attributes({'name':'Tobacco products'}),
 )]
