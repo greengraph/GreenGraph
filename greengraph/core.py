@@ -119,7 +119,61 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         graph: nx.MultiDiGraph = None,
         **attr
     ):
-        super().__init__(graph, **attr) 
+        super().__init__(graph, **attr)
+
+
+    def get_node_by_attributes(
+        self,
+        dict_conditions: dict,
+        data: bool = False,
+    ) -> str:
+        r"""
+        Given a dictionary of node attributes, returns the node (=UUID string)
+        that matches all conditions.
+
+        Parameters
+        ----------
+        conditions: dict
+            A dictionary of node attributes to match.  
+            
+            | keys           | values         |
+            |----------------|----------------|
+            | node attribute | expected value |
+
+        Example
+        --------
+        ```python
+        >>> G = CustomMultiDiGraph()
+        >>> G.add_node('A', name='electricity', product='electricity', amount=1000, location='USA')
+        >>> G.add_node('B', name='electricity', product='electricity', amount=2000, location='USA')
+        >>> G.get_node_by_attributes({'name': 'electricity', 'product': 'electricity'})
+        'A'
+        ```
+
+        Raises
+        ------
+        AttributeError
+            If no nodes are found that match the condition.
+        AttributeError
+            If multiple nodes are found that match the condition.
+
+        Returns
+        -------
+        str
+            The node (=UUID string) that matches the conditions.
+        """
+
+        def _condition_met(attrs: dict):
+            return all(key in attrs and attrs[key] == value for key, value in dict_conditions.items())
+
+        list_of_nodes = [(node, attrs) for node, attrs in self.nodes(data=True) if _condition_met(attrs)]
+
+        if len(list_of_nodes) == 0:
+            raise AttributeError("No nodes found with the given attributes.")
+        elif len(list_of_nodes) > 1:
+            raise AttributeError("Multiple nodes found with the given attributes. Please refine your attributes.")
+        else:
+            return list_of_nodes[0] if data else list_of_nodes[0][0]
 
 
 class graphcontainer():
@@ -224,3 +278,10 @@ G = graph_system_from_input_output_matrices(
 # %%
 
 gg = graphcontainer(G)
+# %%
+
+[gg.graph.nodes[i]['name'] for i in nx.algorithms.shortest_path(
+    G=gg.graph,
+    source=gg.graph.get_node_by_attributes({'name':'Sports'}),
+    target=gg.graph.get_node_by_attributes({'name':'Postal service'}),
+)]

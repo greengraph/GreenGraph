@@ -58,8 +58,8 @@ def from_biadjacency_matrix(
         A bipartite graph created from the biadjacency matrix.
     """
     G = nx.empty_graph(n=0, create_using=create_using)
-    G.add_nodes_from(nodes_axis_0, attr=attributes_nodes_axis_0)
-    G.add_nodes_from(nodes_axis_1, attr=attributes_nodes_axis_1)
+    G.add_nodes_from(nodes_axis_0, **attributes_nodes_axis_0)
+    G.add_nodes_from(nodes_axis_1, **attributes_nodes_axis_1)
 
     row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
     row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
