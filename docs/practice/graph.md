@@ -1,103 +1,77 @@
 # Working with the Graph
 
-TODO: Add some interactive magic to this plot!
+GreenGraph is using the [NetworkX library](https://networkx.org/documentation/stable/) to store information in a graph structure. This means that all of the methods and algorithms available in NetworkX can be used to manipulate the graph. Also, large language models (LLMs) can be used for graph-related queries with high accuracy, since NetworkX is a well-known library with a large user base.
 
-```python exec="true" html="true"
-import plotly.graph_objects as go
+!!! note
+    some note
+    ```python
+    G = nx.MultiDiGraph()
 
-import networkx as nx
+    # Add three nodes with attributes
+    G.add_node(1, type='biosphere', label='Forest', size=100)
+    G.add_node(2, type='technosphere', label='Factory', size=50)
+    G.add_node(3, type='biosphere', label='River', size=75)
+    ```
 
-G = nx.random_geometric_graph(200, 0.125)
+!!! tip
+    We recommend following the [NetworkX Tutorial](https://networkx.org/documentation/stable/tutorial.html) for basic usage of the library.
 
-edge_x = []
-edge_y = []
-for edge in G.edges():
-    x0, y0 = G.nodes[edge[0]]['pos']
-    x1, y1 = G.nodes[edge[1]]['pos']
-    edge_x.append(x0)
-    edge_x.append(x1)
-    edge_x.append(None)
-    edge_y.append(y0)
-    edge_y.append(y1)
-    edge_y.append(None)
+## Selecting Nodes
 
-edge_trace = go.Scatter(
-    x=edge_x, y=edge_y,
-    line=dict(width=0.5, color='#888'),
-    hoverinfo='none',
-    mode='lines')
+### How can I select a specific node from a graph?
 
-node_x = []
-node_y = []
-for node in G.nodes():
-    x, y = G.nodes[node]['pos']
-    node_x.append(x)
-    node_y.append(y)
-
-node_trace = go.Scatter(
-    x=node_x, y=node_y,
-    mode='markers',
-    hoverinfo='text',
-    marker=dict(
-        showscale=True,
-        # colorscale options
-        #'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
-        #'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
-        #'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
-        colorscale='YlGnBu',
-        reversescale=True,
-        color=[],
-        size=10,
-        colorbar=dict(
-            thickness=15,
-            title=dict(
-              text='Node Connections',
-              side='right'
-            ),
-            xanchor='left',
-        ),
-        line_width=2))
-
-node_adjacencies = []
-node_text = []
-for node, adjacencies in enumerate(G.adjacency()):
-    node_adjacencies.append(len(adjacencies[1]))
-    node_text.append('# of connections: '+str(len(adjacencies[1])))
-
-node_trace.marker.color = node_adjacencies
-node_trace.text = node_text
-
-fig = go.Figure(data=[edge_trace, node_trace],
-             layout=go.Layout(
-                title=dict(
-                    text="<br>Network graph made with Python",
-                    font=dict(
-                        size=16
-                    )
-                ),
-                showlegend=False,
-                hovermode='closest',
-                margin=dict(b=20,l=5,r=5,t=40),
-                annotations=[ dict(
-                    text="Python code: <a href='https://plotly.com/python/network-graphs/'> https://plotly.com/python/network-graphs/</a>",
-                    showarrow=False,
-                    xref="paper", yref="paper",
-                    x=0.005, y=-0.002 ) ],
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                )
-
-print(fig.to_html(full_html=False, include_plotlyjs="cdn"))
+```python
 
 ```
 
-## `networkx` Algorithms
+### How can I view all nodes that have a specific attribute?
 
-Potentially relevant:
+!!! info
+    [`graph.nodes(data=True)`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.Graph.nodes.html) returns a networkx `NodeDataView` object, which is a dictionary-like object that allows to iterate over the nodes and their attributes.
 
- - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.shortest_paths.weighted.dijkstra_path.html#networkx.algorithms.shortest_paths.weighted.dijkstra_path
- - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.shortest_augmenting_path.html#networkx.algorithms.flow.shortest_augmenting_path
- - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.edmonds_karp.html#networkx.algorithms.flow.edmonds_karp
- - https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.flow.maximum_flow.html#networkx.algorithms.flow.maximum_flow
- 
+We can use a [Python list comprehension](https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions) to filter the nodes based on their attributes. For example, to get all nodes with the attribute `type` equal to `technosphere`, we can do:
 
+```python
+[
+    (node, attrs) for node, attrs in gg.graph.nodes(data=True)
+    if attrs['type'] == 'technosphere'
+]
+```
+
+### How can I count the number of nodes with a specific attribute?
+
+We can use a [Python list comprehension](https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions) to filter the nodes based on their attributes. Then, we can use the `len()` function to count the number of nodes in the list. For example, to count the number of nodes with the attribute `type` equal to `technosphere`, we can do:
+
+```python
+len([node for node, attrs in gg.graph.nodes(data=True) if attrs['type'] == 'technosphere'])
+```
+
+### How can I get the attributes of a specific node?
+
+We can use the `graph.nodes[node]` method to get the attributes of a specific node. For example, to get the attributes of the node with [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) `1234`, we can do:
+
+```python
+gg.graph.nodes[1234]
+```
+
+!!! info
+    In GreenGraph, every node has a unique identifier (UUID) that is used to identify the node in the graph. This UUID is not human-readable, but it is guaranteed to be unique across all nodes in the graph. The UUID is generated using the [uuid4()](https://docs.python.org/3/library/uuid.html#uuid.uuid4) function from the Python standard library. Only node attributes (`name`, `unit`, etc.) are  human-readable.
+
+### How can I modify the attributes of a specific node?
+
+We can use the `graph.nodes[node].update()` method to modify the attributes of a specific node. For example, to change the `label` attribute of the node with UUID `1234` to `New label`, we can do:
+
+```python
+gg.graph.nodes[1234].update({'label': 'New label'})
+```
+
+### How can I view all nodes connected to a specific node?
+
+!!! info
+    NetworkX offers the [`neighbors()`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.Graph.neighbors.html) method for outgoing connections and [`predecessors()`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.DiGraph.successors.html) for incoming connections to nodes.
+
+To get a list of the names of all nodes connected to a specific node, we can use the `graph.successors(node)` method and then use a list comprehension to get the names of the nodes. For example, to get the names of all nodes connected to the node with UUID `1234`, we can do:
+
+```python
+[gg.graph.nodes[n]['name'] for n in gg.graph.successors(1234)]
+```
