@@ -9,7 +9,7 @@ from pathlib import Path
 import networkx as nx
 from greengraph.utility.logging import logtimer
 
-def _extract_ecospold_xml_masterdata_files(path: Path) -> dict:
+def _extract_ecospold_xml_files(path: Path) -> dict:
     r"""
     Given a path to the root directory containing EcoSpold XML files, extracts
     the relevant `MasterData` XML files and returns a dictionary containing
@@ -197,29 +197,12 @@ def _extract_ecospold_xml_masterdata_files(path: Path) -> dict:
         .iterchildren(NS + "elementaryExchange")
     }
 
-    return {
-        'activity_mapping': activity_mapping,
-        'activity_names_mapping': activity_names_mapping,
-        'product_mapping': product_mapping,
-        'geographies_mapping': geographies_mapping,
-        'product_mapping': product_mapping,
-        'ecosphere_flows_mapping': ecosphere_flows_mapping,
-    }
-
-
-def _extract_ecospold_xml_files(
-    path: Path,
-) -> dict:
-    r"""
-    """
-
     dict_mapping = _extract_ecospold_xml_masterdata_files(path=path)
     activity_mapping = dict_mapping['activity_mapping']
     product_mapping = dict_mapping['product_mapping']
 
     INPUTS = ("Materials/Fuels", "Electricity/Heat", "Services", "From Technosphere (unspecified)")
 
-    combined_nodes = []
     process_nodes, product_nodes = {}, {}
     technosphere_edges, ecosphere_edges = [], []
 
@@ -279,16 +262,6 @@ def _extract_ecospold_xml_files(
             process_nodes[this_process_id] = (this_process, this_product)
             product_nodes[this_product_id] = (this_process, this_product)
 
-            this_process_with_id = this_process.copy()
-            this_process_with_id["id"] = this_process_id
-            this_product_with_id = this_product.copy()
-            this_product_with_id["id"] = this_product_id
-            combined_nodes.append({
-                    'process': this_process_with_id,
-                    'product': this_product_with_id
-                }
-            )
-
             for edge in ecospold.activityDataset.flowData.intermediateExchanges:
                 if not edge.amount:
                     continue
@@ -321,28 +294,16 @@ def _extract_ecospold_xml_files(
                 ))
 
         return {
-            "combined_nodes": combined_nodes,
             "process_nodes": process_nodes,
             "product_nodes": product_nodes,
+            "ecosphere_flows_mapping": ecosphere_flows_mapping,
             "technosphere_edges": technosphere_edges,
             "ecosphere_edges": ecosphere_edges,
         }
 
 # %%
 
-masterfiles = _extract_ecospold_xml_masterdata_files(Path('/Users/michaelweinold/data/ecoinvent 3.7.1_apos_ecoSpold02'))
 out = _extract_ecospold_xml_files(Path('/Users/michaelweinold/data/ecoinvent 3.7.1_apos_ecoSpold02'))
-
-
-# %%
-
-combined_nodes = out['combined_nodes']
-process_nodes = out['process_nodes']
-product_nodes = out['product_nodes']
-technosphere_edges = out['technosphere_edges']
-ecosphere_edges = out['ecosphere_edges']
-ecosphere_flows_mapping = masterfiles['ecosphere_flows_mapping']
-
 
 # %%
 
@@ -566,60 +527,52 @@ def _prepare_ecoinvent_node_and_edge_lists(
         A dictionary containing prepared data for further processing.
     """
 
-    nodes_production = []
-    for (process_code, process_attributes), (product_code, product_attributes) in zip(process_nodes.items(), product_nodes.items()):
-        nodes_production.append(
-            {
-                'type': 'technosphere',
-                'name': process_attributes[0]['name'],
-                'product': product_attributes[1]['name'],
-                'unit': product_attributes[1]['unit'],
-                'geography': process_attributes[0]['geography'],
-                'classifications': product_attributes[1]['classifications'],
-                'brightway_code_process': process_code,
-                'brightway_code_product': product_code},
-        )
+        # Nodes for production (technosphere)
+    nodes_production = [
+        {
+            'type': 'technosphere',
+            'name': process_attributes[0]['name'],
+            'product': product_attributes[1]['name'],
+            'unit': product_attributes[1]['unit'],
+            'geography': process_attributes[0]['geography'],
+            'classifications': product_attributes[1]['classifications'],
+            'brightway_code_process': process_code,
+            'brightway_code_product': product_code
+        }
+        for (process_code, process_attributes), (product_code, product_attributes) in zip(process_nodes.items(), product_nodes.items())
+    ]
 
-    nodes_extension = []
-    for extension_code, extension_attributes in ecosphere_flows_mapping.items():
-        nodes_extension.append(
-            {
-                'type': 'biosphere',
-                'name': extension_attributes['name'],
-                'unit': extension_attributes['unit'],
-                'chemical_formula': extension_attributes['chemical_formula'],
-                'CAS': extension_attributes['CAS'],
-                'compartments': extension_attributes['compartments'],
-                'synonyms': extension_attributes['synonyms'],
-                'brightway_code_extension': extension_code},
-        )
+    # Nodes for extensions (biosphere)
+    nodes_extension = [
+        {
+            'type': 'biosphere',
+            'name': extension_attributes['name'],
+            'unit': extension_attributes['unit'],
+            'chemical_formula': extension_attributes['chemical_formula'],
+            'CAS': extension_attributes['CAS'],
+            'compartments': extension_attributes['compartments'],
+            'synonyms': extension_attributes['synonyms'],
+            'brightway_code_extension': extension_code
+        }
+        for extension_code, extension_attributes in ecosphere_flows_mapping.items()
+    ]
 
-    edges_biosphere = []
-    for edge in ecosphere_edges:
-        edges_biosphere.append(
-            (edge.process, edge.flow, edge.amount)
-        )
+    # Edges for biosphere
+    edges_biosphere = [(edge.process, edge.flow, edge.amount) for edge in ecosphere_edges]
 
-    df_code_lookup_production = pd.DataFrame(
-        [
-            {
-                'brightway_code_process': node['brightway_code_process'],
-                'brightway_code_product': node['brightway_code_product'],
-            } for node in nodes_production
-        ]
-    )
-    df_edges_production = pd.DataFrame(
-        [(edge.source, edge.target, edge.amount) for edge in technosphere_edges if edge.positive==False],
-        columns=['source', 'target', 'amount'] # source is product, target is process
-    )
-    df_edges_production = df_edges_production.merge(
-        df_code_lookup_production,
-        left_on='source',
-        right_on='brightway_code_product',
-        how='left'
-    )
-    df_edges_production = df_edges_production.drop(columns=['brightway_code_product'])
-    df_edges_production['source'] = df_edges_production['brightway_code_process']
-    df_edges_production = df_edges_production.drop(columns=['brightway_code_process'])
+    # Edges for production (technosphere)
+    product_to_process = {
+        node['brightway_code_product']: node['brightway_code_process']
+        for node in nodes_production
+    }
+    edges_production = [
+        (product_to_process.get(edge.source, None), edge.target, float(edge.amount))
+        for edge in technosphere_edges if not edge.positive
+    ]
 
-    
+    return {
+        'nodes_production': nodes_production,
+        'nodes_extension': nodes_extension,
+        'edges_biosphere': edges_biosphere,
+        'edges_production': edges_production,
+    }
