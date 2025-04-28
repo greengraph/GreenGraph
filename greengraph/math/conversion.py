@@ -14,14 +14,20 @@ def _generate_matrices_from_graph(
     """
     Generate matrices.......
     """
-    technosphere_sorted_uuids = sorted(
-        [node for node in G.nodes() if G.nodes[node].get('type') == 'technosphere'],
-        key=lambda node: tuple(G.nodes[node][attr] for attr in technosphere_matrix_sorting_attributes)
-    )
-    biosphere_sorted_uuids = sorted(
-        [node for node in G.nodes() if G.nodes[node].get('type') == 'biosphere'],
-        key=lambda node: tuple(G.nodes[node][attr] for attr in biosphere_matrix_sorting_attributes)
-    )
+    if technosphere_matrix_sorting_attributes is None:
+        technosphere_sorted_uuids = None
+    else:
+        technosphere_sorted_uuids = sorted(
+            [node for node in G.nodes() if G.nodes[node].get('type') == 'technosphere'],
+            key=lambda node: tuple(G.nodes[node][attr] for attr in technosphere_matrix_sorting_attributes)
+        )
+    if biosphere_matrix_sorting_attributes is None:
+        biosphere_sorted_uuids = None
+    else:
+        biosphere_sorted_uuids = sorted(
+            [node for node in G.nodes() if G.nodes[node].get('type') == 'biosphere'],
+            key=lambda node: tuple(G.nodes[node][attr] for attr in biosphere_matrix_sorting_attributes)
+        )
     with logtimer("Generating technosphere matrix."):
         A = nx.algorithms.bipartite.biadjacency_matrix(
             G,
