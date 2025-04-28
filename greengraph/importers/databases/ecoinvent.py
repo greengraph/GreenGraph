@@ -527,7 +527,7 @@ def _prepare_ecoinvent_node_and_edge_lists(
         A dictionary containing prepared data for further processing.
     """
 
-        # Nodes for production (technosphere)
+    # Nodes for production (technosphere)
     nodes_production = [
         {
             'type': 'technosphere',

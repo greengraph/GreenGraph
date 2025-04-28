@@ -224,15 +224,16 @@ def graph_system_from_input_output_matrices(
 
 def graph_system_from_node_and_edge_lists(
     name_system: str,
-    str_uuid: str,
-    new_uuid: bool,
+    assign_new_uuids: bool,
+    str_production_nodes_uuid: str,
+    str_extension_nodes_uuid: str,
     list_dicts_production_nodes_metadata: list[dict],
     list_dicts_extension_nodes_metadata: list[dict],
     list_tuples_production_edges: list[dict],
     list_tuples_extension_edges: list[dict],
 ) -> nx.MultiDiGraph:
     r"""
-    
+
     Create a MultiDiGraph from technosphere and biosphere matrices.
     """
     for node_metadata in list_dicts_production_nodes_metadata:
@@ -244,17 +245,17 @@ def graph_system_from_node_and_edge_lists(
 
     A = nx.MultiDiGraph(None)
     for node in list_dicts_production_nodes_metadata:
-        A.add_node(node[str_uuid], **node)
+        A.add_node(node[str_production_nodes_uuid], **node)
     
     B = nx.MultiDiGraph(None)
     for node in list_dicts_extension_nodes_metadata:
-        B.add_node(node[str_uuid], **node)
+        B.add_node(node[str_extension_nodes_uuid], **node)
                    
     A.add_edges_from(list_tuples_production_edges)
     B.add_edges_from(list_tuples_extension_edges)
     G = nx.compose(A, B)
 
-    if new_uuid:
+    if assign_new_uuids:
         G = G.relabel_nodes(
             G=G,
             mapping={node: str(uuid.uuid4()) for node in G.nodes()}
