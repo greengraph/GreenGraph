@@ -1,13 +1,11 @@
-# %%
-import pandas as pd
 import hashlib
 from lxml import objectify
 from dataclasses import dataclass
 import pyecospold
 from pyecospold.model_v2 import IntermediateExchange, Activity, FlowData
 from pathlib import Path
-import networkx as nx
 from greengraph.utility.logging import logtimer
+
 
 def _extract_ecospold_xml_files(path: Path) -> dict:
     r"""
@@ -301,11 +299,6 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
             "ecosphere_edges": ecosphere_edges,
         }
 
-# %%
-
-out = _extract_ecospold_xml_files(Path('/Users/michaelweinold/data/ecoinvent 3.7.1_apos_ecoSpold02'))
-
-# %%
 
 def _prepare_ecoinvent_node_and_edge_lists(
     process_nodes: dict,
