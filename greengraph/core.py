@@ -14,7 +14,7 @@ from greengraph.math.matrix import (
     calculate_impact_vector
 )
 
-class CustomMultiDiGraph(nx.MultiDiGraph):
+class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     r"""
     A custom directed graph class that extends [`networkx.MultiDiGraph`](https://networkx.org/documentation/stable/reference/classes/multidigraph.html).
     
@@ -175,25 +175,9 @@ class CustomMultiDiGraph(nx.MultiDiGraph):
         else:
             return list_of_nodes[0] if data else list_of_nodes[0][0]
 
-
-class graphcontainer():
-    def __init__(
-        self,
-        graph: CustomMultiDiGraph = None,
-        comment: str = None,
-    ):
-        r"""
-        ![Container Ship](https://upload.wikimedia.org/wikipedia/commons/2/25/Container-158362.svg)
-        """
-        self.graph = CustomMultiDiGraph(graph)
-        self.metadata = {
-            'created': datetime.now(),
-            'comment': comment,
-        }
-
-class matrixcontainer():
+class GreenGraphMatrixContainer():
     """
-    GreenGraph class to manage matrices generated from the graph.
+    GreenGraph class to manage matrices (technosphere, biosphere, characterization, etc.) generated from the graph.
 
     Attributes
     ----------
@@ -254,34 +238,3 @@ class matrixcontainer():
             Q=self.matrices['Q']
         )
         return h
-    
-
-# %%
-from greengraph.importers.databases.inputoutput import useeio
-from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
-
-
-data_useeio = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
-
-G = graph_system_from_input_output_matrices(
-    name_system='useeio',
-    convention='I-A',
-    ignore_matrix_dimension_errors=False,
-    matrix_production=data_useeio['A'].to_numpy(),
-    matrix_extension=data_useeio['B'].to_numpy(),
-    matrix_characterization=data_useeio['C'].to_numpy(),
-    list_dicts_production_node_metadata=data_useeio['dicts_A_metadata'],
-    list_dicts_extension_node_metadata=data_useeio['dicts_B_metadata'],
-    list_dicts_characterization_node_metadata=data_useeio['dicts_C_metadata']
-)
-
-# %%
-
-gg = graphcontainer(G)
-# %%
-
-[gg.graph.nodes[i]['name'] for i in nx.algorithms.shortest_path(
-    G=gg.graph,
-    source=gg.graph.get_node_by_attributes({'name':'Wireless telecommunications'}),
-    target=gg.graph.get_node_by_attributes({'name':'Tobacco products'}),
-)]

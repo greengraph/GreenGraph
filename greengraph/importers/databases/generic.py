@@ -17,7 +17,10 @@ from greengraph.utility.graph import from_biadjacency_matrix
 
 def graph_system_from_input_output_matrices(
     name_system: str,
-    normalized_production: bool,
+    assign_new_uuids: bool,
+    str_production_nodes_uuid: str,
+    str_extension_nodes_uuid: str,
+    matrix_convention: str,
     array_production: np.ndarray,
     array_extension: np.ndarray,
     list_dicts_production_node_metadata: list[dict],
@@ -92,20 +95,26 @@ def graph_system_from_input_output_matrices(
     
     Warnings
     --------
-    This function requires that:
+    This function expects that:
     
-    1. The production matrix is square.
-    2. The order of rows/columns in the production matrix
+    1. Unless an attribute `production` is specified for a node, production is set to 1.
+    2. The production matrix is square.
+    3. The order of rows/columns in the production matrix
     corresponds to the order of nodes in the production node metadata list.
-    3. The order of rows in the extension matrix corresponds to the order of nodes in the extension node metadata list.
-    4. The order of colums in the extension matrix corresponds to the order of nodes in the production node metadata list.
+    4. The order of rows in the extension matrix corresponds to the order of nodes in the extension node metadata list.
+    5. The order of colums in the extension matrix corresponds to the order of nodes in the production node metadata list.
+
+    See Also
+    --------
+    [I-A]...
 
     Parameters
     ----------
     name_system : str
         Name of the system.
-    normalized_production : bool
-        Whether the production matrix is normalized (=every process produces an amount of 1).
+    matrix_convention : str
+        The convention used for the production matrix.  
+        Must be either 'I-A' (technology matrix convention) or 'A' (process-based inventory convention).
     array_production : np.ndarray
         Technosphere matrix.
     array_extension : np.ndarray
@@ -135,10 +144,6 @@ def graph_system_from_input_output_matrices(
         raise ValueError("Production matrix must be square.")
     if array_extension.shape[0] != array_production.shape[0]:
         raise ValueError("Dimension mismatch between production and extension matrices.")
-    if array_production.shape[0] != len(list_dicts_production_node_metadata):
-        raise ValueError("Number of rows in production matrix does not match number of metadata dictionaries.")
-    if array_extension.shape[0] != len(list_dicts_extension_node_metadata):
-        raise ValueError("Number of rows in extension matrix does not match number of metadata dictionaries.")
 
     for matrix, metadata, name in [
         (array_production, list_dicts_production_node_metadata, "production"),
@@ -152,41 +157,40 @@ def graph_system_from_input_output_matrices(
     for node_metadata in list_dicts_production_node_metadata:
         for key in ['name', 'unit']:
             if key not in node_metadata:
-                raise ValueError(f"Metadata dictionary for every node must contain a '{key}' key.")
+                raise ValueError(f"Metadata dictionary of every node must contain a '{key}' key.")
 
-    if not convention in ['I-A', 'A']:
-        raise ValueError("Convention must be 'I-A' or 'A'.")
-    if convention == 'A':
+    if not matrix_convention in ['I-A', 'A']:
+        raise ValueError("matrix_convention must be 'I-A' or 'A'.")
+    if matrix_convention == 'A':
         np.fill_diagonal(array_production, 0)
-    elif convention == 'I-A':
+        A = np.abs(A)
+    elif matrix_convention == 'I-A':
         if not (array_production >= 0).all():
             raise ValueError("All entries in the technosphere matrix must be non-negative.")
 
     # Production Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_production_node_metadata):
-        dict_node_metadata['uuid'] = str(uuid.uuid4())
+        if assign_new_uuids:
+            dict_node_metadata['uuid'] = str(uuid.uuid4())
+        else:
+            dict_node_metadata['uuid'] = dict_node_metadata[str_production_nodes_uuid]
         dict_node_metadata['index'] = idx
         dict_node_metadata['type'] = 'production'
         dict_node_metadata['system'] = name_system
-        if convention == 'I-A':
+        if matrix_convention == 'I-A':
             dict_node_metadata['production'] = 1.0
-        elif convention == 'A':
+        elif matrix_convention == 'A':
             dict_node_metadata['production'] = array_production[idx, idx]
 
     # Extension Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_extension_node_metadata):
-        dict_node_metadata['uuid'] = str(uuid.uuid4())
+        if assign_new_uuids:
+            dict_node_metadata['uuid'] = str(uuid.uuid4())
+        else:
+            dict_node_metadata['uuid'] = dict_node_metadata[str_extension_nodes_uuid]
         dict_node_metadata['index'] = idx       
         dict_node_metadata['type'] = 'extension'
         dict_node_metadata['system'] = name_system
-
-    # Characterization Metadata Parsing
-    for idx, dict_node_metadata in enumerate(list_dicts_characterization_node_metadata):
-        dict_node_metadata['uuid'] = str(uuid.uuid4())
-        dict_node_metadata['index'] = idx
-        dict_node_metadata['type'] = 'characterization'
-        dict_node_metadata['system'] = name_system
-
     
     array_production = xr.DataArray(
         np.abs(array_production),
@@ -209,7 +213,7 @@ def graph_system_from_input_output_matrices(
         logging.info(
             f"# of nodes: {len(array_production.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_production) & (array_production != 0))):,}"
         )
-        G = nx.from_numpy_array(
+        A = nx.from_numpy_array(
             array_production.values,
             create_using=nx.MultiDiGraph,
             parallel_edges=False,
@@ -237,19 +241,13 @@ def graph_system_from_input_output_matrices(
         for node_metadata in list_dicts_extension_node_metadata:
             for key, value in node_metadata.items():
                 B.nodes[node_metadata['uuid']][key] = value
-        for node_metadata in list_dicts_characterization_node_metadata:
-            for key, value in node_metadata.items():
-                Q.nodes[node_metadata['uuid']][key] = value
 
     with logtimer("merging production and extension graphs."):
-        GcomposeB = nx.compose(B, G)
-        del G
+        BcomposeA = nx.compose(B, A)
+        del A
         del B
-    with logtimer("merging production+extension and characterization graphs."):
-        GBcomposeQ = nx.compose(Q, GcomposeB)
-        del GcomposeB
 
-    return GBcomposeQ
+    return BcomposeA
 
 
 def graph_system_from_node_and_edge_lists(
@@ -269,6 +267,12 @@ def graph_system_from_node_and_edge_lists(
     Notes
     -----
     This function is best suited for importing Ecoinvent/Ecospold data.
+
+    Warnings
+    --------
+    This function expects that:
+
+    1. Unless an attribute `production` is specified for a node, production is set to 1.
 
     Example
     -------
@@ -350,6 +354,8 @@ def graph_system_from_node_and_edge_lists(
             raise ValueError("At least 'name' and 'unit' attributes must be present for every node.")
         node['type'] = 'production'
         node['system'] = name_system
+        if 'production' not in node:
+            node['production'] = 1.0
         A.add_node(node[str_production_nodes_uuid], **node)
     
     B = nx.MultiDiGraph(None)
