@@ -6,13 +6,9 @@ into a greengraph graph class.
 # %%
 import networkx as nx
 import xarray as xr
-import pandas as pd
 import numpy as np
-import scipy as sp
 import logging
-from pathlib import Path
 import uuid
-from datetime import datetime
 from greengraph.utility.logging import logtimer
 import uuid
 
@@ -21,14 +17,11 @@ from greengraph.utility.graph import from_biadjacency_matrix
 
 def graph_system_from_input_output_matrices(
     name_system: str,
-    convention: str,
-    ignore_matrix_dimension_errors: bool,
-    matrix_production: np.ndarray,
-    matrix_extension: np.ndarray,
-    matrix_characterization: np.ndarray,
+    normalized_production: bool,
+    array_production: np.ndarray,
+    array_extension: np.ndarray,
     list_dicts_production_node_metadata: list[dict],
     list_dicts_extension_node_metadata: list[dict],
-    list_dicts_characterization_node_metadata: list[dict],
 ) -> nx.MultiDiGraph:
     r"""
     Create a MultiDiGraph from technosphere and biosphere matrices.
@@ -57,41 +50,99 @@ def graph_system_from_input_output_matrices(
     | 1     | B    | kg   | 1         |
     | 2     | C    | kg   | 1         |
 
+    Notes
+    -----
+    This function is best suited for importing input-output data.
+
+      A B C
+    A 0 0 0
+    B 1 0 0
+    C 2 3 0
+
+    Example
+    -------
+    Note that this example uses the same example system as
+    [`greengraph.importers.databases.generic.graph_system_from_node_and_edge_lists`][].
+    ```python
+    list_dicts_production_nodes_metadata = [
+        {'name': 'A', 'unit': 'kg'},
+        {'name': 'B', 'unit': 'kg'},
+        {'name': 'C', 'unit': 'kg'}
+    ]
+    list_dicts_extension_nodes_metadata = [
+        {'name': 'alpha', 'unit': 'kg(CO2)'},
+    ]
+    array_production = np.array([
+        [0, 0, 0],
+        [-1, 0, 0],
+        [-2, -3, 0]
+    ])
+    array_extension = np.array([
+        [4, 3, 2]
+    ])
+    G = graph_system_from_input_output_matrices(
+        name_system='example_system',
+        normalized_production=True,
+        array_production=array_production,
+        array_extension=array_extension,
+        list_dicts_production_node_metadata=list_dicts_production_nodes_metadata,
+        list_dicts_extension_node_metadata=list_dicts_extension_nodes_metadata
+    )
+    ```
     
     Warnings
     --------
-    This function assumes that
-
-    order or rows....
-
+    This function requires that:
+    
+    1. The production matrix is square.
+    2. The order of rows/columns in the production matrix
+    corresponds to the order of nodes in the production node metadata list.
+    3. The order of rows in the extension matrix corresponds to the order of nodes in the extension node metadata list.
+    4. The order of colums in the extension matrix corresponds to the order of nodes in the production node metadata list.
 
     Parameters
     ----------
-    matrix_production : np.ndarray
+    name_system : str
+        Name of the system.
+    normalized_production : bool
+        Whether the production matrix is normalized (=every process produces an amount of 1).
+    array_production : np.ndarray
         Technosphere matrix.
-    matrix_extension : np.ndarray
+    array_extension : np.ndarray
         Biosphere matrix.
-    list_metadata_technosphere : list[dict]
-        List of metadata for technosphere nodes.
-    list_metadata_biosphere : list[dict]
-        List of metadata for biosphere nodes.
+    list_dicts_production_node_metadata : list[dict]
+        List of metadata dictionaries for production nodes.
+        Must contain at least the keys `['name', 'unit']`.
+    list_dicts_extension_node_metadata : list[dict]
+        List of metadata dictionaries for extension nodes.
+        Must contain at least the keys `['name', 'unit']`.
 
     Returns
     -------
     nx.MultiDiGraph
         The created MultiDiGraph.
+
+    Raises
+    ------
+    ValueError
+        - If the input data is not in the correct format.
+        - If the number of nodes in the production graph does not match the number of metadata dictionaries.
+        - If the number of nodes in the extension graph does not match the number of metadata dictionaries.
+        - If the number of nodes in the combined graph does not match the number of metadata dictionaries.
+
     """
-    
-    if ignore_matrix_dimension_errors == False:
-        if matrix_production.shape[0] != matrix_production.shape[1]:
-            raise ValueError("Production matrix must be square.")
-        if matrix_extension.shape[0] != matrix_characterization.shape[1]:
-            raise ValueError("Dimension mismatch between extension matrix and characterization matrix.")
+    if array_production.shape[0] != array_production.shape[1]:
+        raise ValueError("Production matrix must be square.")
+    if array_extension.shape[0] != array_production.shape[0]:
+        raise ValueError("Dimension mismatch between production and extension matrices.")
+    if array_production.shape[0] != len(list_dicts_production_node_metadata):
+        raise ValueError("Number of rows in production matrix does not match number of metadata dictionaries.")
+    if array_extension.shape[0] != len(list_dicts_extension_node_metadata):
+        raise ValueError("Number of rows in extension matrix does not match number of metadata dictionaries.")
 
     for matrix, metadata, name in [
-        (matrix_production, list_dicts_production_node_metadata, "production"),
-        (matrix_extension, list_dicts_extension_node_metadata,  "biosphere"),
-        (matrix_characterization, list_dicts_characterization_node_metadata, "characterization")
+        (array_production, list_dicts_production_node_metadata, "production"),
+        (array_extension, list_dicts_extension_node_metadata,  "biosphere"),
     ]:
         if not np.issubdtype(matrix.dtype, np.number):
             raise TypeError(f"All entries in the {name} matrix must be numeric.")
@@ -106,9 +157,9 @@ def graph_system_from_input_output_matrices(
     if not convention in ['I-A', 'A']:
         raise ValueError("Convention must be 'I-A' or 'A'.")
     if convention == 'A':
-        np.fill_diagonal(matrix_production, 0)
+        np.fill_diagonal(array_production, 0)
     elif convention == 'I-A':
-        if not (matrix_production >= 0).all():
+        if not (array_production >= 0).all():
             raise ValueError("All entries in the technosphere matrix must be non-negative.")
 
     # Production Metadata Parsing
@@ -120,7 +171,7 @@ def graph_system_from_input_output_matrices(
         if convention == 'I-A':
             dict_node_metadata['production'] = 1.0
         elif convention == 'A':
-            dict_node_metadata['production'] = matrix_production[idx, idx]
+            dict_node_metadata['production'] = array_production[idx, idx]
 
     # Extension Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_extension_node_metadata):
@@ -137,66 +188,45 @@ def graph_system_from_input_output_matrices(
         dict_node_metadata['system'] = name_system
 
     
-    matrix_production = xr.DataArray(
-        np.abs(matrix_production),
+    array_production = xr.DataArray(
+        np.abs(array_production),
         dims=['rows', 'cols'],
         coords={
             'rows': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata],
             'cols': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata]
         }
     )
-    matrix_extension = xr.DataArray(
-        matrix_extension,
+    array_extension = xr.DataArray(
+        array_extension,
         dims=['rows', 'cols'],
         coords={
             'rows': [node_metadata['uuid'] for node_metadata in list_dicts_extension_node_metadata],
             'cols': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata]
         }
     )
-    matrix_characterization = xr.DataArray(
-        matrix_characterization,
-        dims=['rows', 'cols'],
-        coords={
-            'rows': [node_metadata['uuid'] for node_metadata in list_dicts_characterization_node_metadata],
-            'cols': [node_metadata['uuid'] for node_metadata in list_dicts_extension_node_metadata]
-        }
-    )
     
     with logtimer("creating MultiDiGraph from technosphere matrix."):
         logging.info(
-            f"# of nodes: {len(matrix_production.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(matrix_production) & (matrix_production != 0))):,}"
+            f"# of nodes: {len(array_production.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_production) & (array_production != 0))):,}"
         )
         G = nx.from_numpy_array(
-            matrix_production.values,
+            array_production.values,
             create_using=nx.MultiDiGraph,
             parallel_edges=False,
             edge_attr='flow',
-            nodelist=matrix_production.coords['rows'].values.tolist(),
+            nodelist=array_production.coords['rows'].values.tolist(),
         )
 
     with logtimer("creating MultiDiGraph from biosphere matrix."):
         logging.info(
-            f"# of nodes: {len(matrix_extension.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(matrix_extension) & (matrix_extension != 0))):,}"
+            f"# of nodes: {len(array_extension.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_extension) & (array_extension != 0))):,}"
         )
         B = from_biadjacency_matrix(
-            matrix=matrix_extension.values,
-            nodes_axis_0=matrix_extension.coords['rows'].values.tolist(),
-            nodes_axis_1=matrix_extension.coords['cols'].values.tolist(),
+            matrix=array_extension.values,
+            nodes_axis_0=array_extension.coords['rows'].values.tolist(),
+            nodes_axis_1=array_extension.coords['cols'].values.tolist(),
             attributes_nodes_axis_0={'type': 'biosphere'},
             attributes_nodes_axis_1={'type': 'technosphere'},
-            create_using=nx.MultiDiGraph
-        )
-
-    with logtimer("creating MultiDiGraph from characterization matrix."):
-        logging.info(
-            f"# of nodes: {len(matrix_characterization.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(matrix_characterization) & (matrix_characterization != 0))):,}"
-        )
-        Q = from_biadjacency_matrix(
-            matrix=matrix_characterization.values,
-            nodes_axis_0=matrix_characterization.coords['rows'].values.tolist(),
-            nodes_axis_1=matrix_characterization.coords['cols'].values.tolist(),
-            attributes_nodes_axis_0={'type': 'impact'},
-            attributes_nodes_axis_1={'type': 'biosphere'},
             create_using=nx.MultiDiGraph
         )
 
@@ -242,6 +272,8 @@ def graph_system_from_node_and_edge_lists(
 
     Example
     -------
+    Note that this example uses the same example system as
+    [`greengraph.importers.databases.generic.graph_system_from_input_output_matrices`][].
     ```python
     list_dicts_production_nodes_metadata = [
         {'name': 'A', 'unit': 'kg'},

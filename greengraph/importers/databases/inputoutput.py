@@ -82,8 +82,9 @@ class useeio:
 
         Warnings
         --------
-        The $\mathbf{A}$ matrix of the USEEIO model contains some sign-errors (negative values).
-        In the current implementation, these values are corrected by simply changin the sign.
+        The $\mathbf{A}$ matrix of the USEEIO model contains some sign-errors (negative values, albeit of small magnitude).
+        In the current implementation, these values are corrected by simply setting them to zero.
+        This follows a recommendation from experts at [NREL](https://en.wikipedia.org/wiki/National_Renewable_Energy_Laboratory).
 
         References
         --------
