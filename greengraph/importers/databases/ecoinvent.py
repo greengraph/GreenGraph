@@ -339,10 +339,6 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         .iterchildren(NS + "elementaryExchange")
     }
 
-    dict_mapping = _extract_ecospold_xml_masterdata_files(path=path)
-    activity_mapping = dict_mapping['activity_mapping']
-    product_mapping = dict_mapping['product_mapping']
-
     INPUTS = ("Materials/Fuels", "Electricity/Heat", "Services", "From Technosphere (unspecified)")
 
     process_nodes, product_nodes = {}, {}

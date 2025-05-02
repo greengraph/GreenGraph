@@ -350,7 +350,7 @@ def graph_system_from_node_and_edge_lists(
 
     A = nx.MultiDiGraph(None)
     for node in list_dicts_production_nodes_metadata:
-        if set('name', 'unit').issubset(node.keys()) == False:
+        if set(['name', 'unit']).issubset(node.keys()) == False:
             raise ValueError("At least 'name' and 'unit' attributes must be present for every node.")
         node['type'] = 'production'
         node['system'] = name_system
@@ -360,7 +360,7 @@ def graph_system_from_node_and_edge_lists(
     
     B = nx.MultiDiGraph(None)
     for node in list_dicts_extension_nodes_metadata:
-        if set('name', 'unit').issubset(node.keys()) == False:
+        if set(['name', 'unit']).issubset(node.keys()) == False:
             raise ValueError("At least 'name' and 'unit' attributes must be present for every node.")
         node['type'] = 'extension'
         node['system'] = name_system
@@ -378,9 +378,43 @@ def graph_system_from_node_and_edge_lists(
         raise ValueError("Number of nodes in combined graph does not match number of metadata dictionaries.")
 
     if assign_new_uuids:
-        G = G.relabel_nodes(
+        G = nx.relabel_nodes(
             G=G,
             mapping={node: str(uuid.uuid4()) for node in G.nodes()}
         )
     
     return G
+
+
+def add_characterization_graph_from_node_and_edge_lists(
+    G: nx.MultiDiGraph,
+    list_dicts_characterization_nodes_metadata: list[dict],
+    list_tuples_characterization_edges: list[tuple],
+) -> nx.MultiDiGraph:
+    r"""
+    Add a characterization graph to an existing graph.
+
+    Parameters
+    ----------
+    G : nx.MultiDiGraph
+        The existing graph to which the characterization graph will be added.
+    list_dicts_characterization_nodes_metadata : list[dict]
+        List of metadata dictionaries for characterization nodes.  
+        Must contain at least the keys `['name', 'unit']`.
+    list_tuples_characterization_edges : list[tuple]
+        List of tuples representing edges for characterization nodes.  
+        Must be in the form: `(source_uuid, target_uuid, amount)`.
+
+    Returns
+    -------
+    nx.MultiDiGraph
+        The updated graph with the characterization graph added.
+
+    Raises
+    ------
+    ValueError
+        - If the input data is not in the correct format.
+        - If the number of nodes in the characterization graph does not match the number of metadata dictionaries.
+        - If the number of nodes in the combined graph does not match the number of metadata dictionaries.
+    """
+    
