@@ -1,8 +1,5 @@
-# %%
-
-import uuid
 import networkx as nx
-import copy
+
 
 def _make_hashable(value) -> object:
     """
@@ -159,14 +156,9 @@ def _create_dynamic_lookup_dictionary(
     return dict_lookup
 
 
-
-def _add_shared_uuids_to_list_of_dicts(list_dicts) -> list[dict]:
+def _remove_duplicate_dictionaries(list_dicts) -> list[dict]:
     """
-    Given a list of dictionaries, adds a UUID to each dictionary.
-
-    Notes
-    -----
-    Identical dictionaries in the input list will receive the same UUID.
+    Given a list of dictionaries, removes all duplicates.
 
 
     Example
@@ -175,9 +167,9 @@ def _add_shared_uuids_to_list_of_dicts(list_dicts) -> list[dict]:
     >>> list_dicts = [{'name': 'A'}, {'name': 'B'}, {'name': 'A'}]
     >>> add_shared_uuids_to_list_of_dicts(list_dicts)
     [
-        {'name': 'A', 'uuid': '1234'},
-        {'name': 'B', 'uuid': '5678'},
+        {'name': 'A'},
     ]
+    ```
 
     Parameters
     ----------
@@ -189,7 +181,7 @@ def _add_shared_uuids_to_list_of_dicts(list_dicts) -> list[dict]:
     list[dict]
         A list of dictionaries with added UUIDs.
     """
-    dict_uuid_cache = {}
+    list_seen_metadata_tuples = set()
     list_output = []
 
     for i, dict_node_metadata in enumerate(list_dicts):
@@ -197,15 +189,10 @@ def _add_shared_uuids_to_list_of_dicts(list_dicts) -> list[dict]:
             raise TypeError(f"Expected a list of dictionaries, but got {type(dict_node_metadata).__name__} at index {i}.")
 
         node_metadata_tuple = _dict_to_tuple(dict_node_metadata)
-        if node_metadata_tuple in dict_uuid_cache:
-            uuid_node = dict_uuid_cache[node_metadata_tuple]
+        if node_metadata_tuple in list_seen_metadata_tuples:
+            pass
         else:
-            uuid_node = str(uuid.uuid4())
-            dict_uuid_cache[node_metadata_tuple] = uuid_node
-
-        dict_node_metadata_uuid = copy.deepcopy(dict_node_metadata)
-        dict_node_metadata_uuid['uuid'] = uuid_node
-
-        list_output.append(dict_node_metadata_uuid)
+            list_seen_metadata_tuples.add(node_metadata_tuple)
+            list_output.append(dict_node_metadata)
 
     return list_output

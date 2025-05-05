@@ -67,26 +67,6 @@ out = load_ecoinvent_characterization_data(path=path, version='3.11')
 
 # %%
 
-from greengraph.utility.data import add_uuid_to_unique_dicts
-from greengraph.utility.data import get_unique_dicts
-
-char = [tup[0] for tup in out]
-
-char = add_uuid_to_unique_dicts(char)
-
-seen = set()
-unique_dicts = []
-for d in char:
-    if d['uuid'] not in seen:
-        unique_dicts.append(d)
-        seen.add(d['uuid'])
-
-# %%
-
-bio = [tup[1] for tup in out]
-
-# %%
-
 from pathlib import Path
 import networkx as nx
 from greengraph.importers.databases.ecoinvent import _prepare_ecoinvent_node_and_edge_lists
@@ -123,6 +103,25 @@ G = graph_system_from_node_and_edge_lists(
 )
 
 # %%
+
+from greengraph.utility.data import (
+    _create_dynamic_lookup_dictionary,
+    _dict_to_tuple,
+    _remove_duplicate_dictionaries
+)
+
+dict_lookup_extension_nodes = _create_dynamic_lookup_dictionary(G=G, node_type='extension', list_attributes=['name', 'compartment', 'subcompartment'])
+
+list_nodes_char = _remove_duplicate_dictionaries([item[1] for item in out])
+for node in list_nodes_char:
+    node['type'] = 'characterization'
+    node['uuid'] = str(uuid.uuid4())
+
+list_uuids_char = [node['uuid'] for node in list_nodes_char]
+
+list_uuids_ext = [dict_lookup_extension_nodes.get(_dict_to_tuple(item[0])) for item in out]
+
+
 
 # %%
 
