@@ -8,6 +8,7 @@ import networkx as nx
 
 path = Path('/Users/michaelweinold/data/ecoinvent 3.11_LCIA_implementation/LCIA Implementation 3.11.xlsx')
 # 3.10 file takes forever to merge...whyever?!
+path_310 = Path('/Users/michaelweinold/Downloads/ecoinvent 3.10_LCIA_implementation/LCIA Implementation 3.10.xlsx')
 
 def load_ecoinvent_characterization_data(
     path: Path,
@@ -27,12 +28,12 @@ def load_ecoinvent_characterization_data(
             path,
             sheet_name="CFs",
             header=0
-        )
+        ).drop_duplicates()
         df_units = pd.read_excel(
             path,
             sheet_name="Indicators",
             header=0
-        )
+        ).drop_duplicates()
     
     with logtimer('preparing Ecoinvent characterization data.'):
         df_cf_edges_with_units = pd.merge(
@@ -65,6 +66,8 @@ def load_ecoinvent_characterization_data(
 
 out = load_ecoinvent_characterization_data(path=path, version='3.11')
 
+# %%
+out310 = load_ecoinvent_characterization_data(path=path_310, version='3.10')
 # %%
 
 from pathlib import Path
