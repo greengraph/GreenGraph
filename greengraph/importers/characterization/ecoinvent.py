@@ -44,23 +44,46 @@ def load_ecoinvent_characterization_data(
         df_cf_edges_with_units.columns = df_cf_edges_with_units.columns.str.lower()
 
         df_cf = df_cf_edges_with_units[['method', 'category', 'indicator', 'indicator unit']].drop_duplicates()
-        df_cf['uuid'] = [str(uuid.uuid4()) for _ in range(len(df_cf))]
+        df_cf['uuid_charcterization'] = [str(uuid.uuid4()) for _ in range(len(df_cf))]
+        df_cf['unit'] = df_cf['indicator unit']
 
         df_cf_edges_with_units = df_cf_edges_with_units.merge(
-            df_cf[['method', 'category', 'indicator', 'uuid']],
+            df_cf,
             on=['method', 'category', 'indicator'],
             how="left",
-        )[['name', 'uuid', 'cf']]
+        )
     
-    return {
-        'list_dicts_cf_nodes': df_cf.to_dict(orient='records'),
-        'list_dicts_cf_edges': df_cf_edges_with_units.to_dict(orient='records')
-    }
+    dict_cf_edges = list(
+        zip(
+            df_cf_edges_with_units[['name', 'compartment', 'subcompartment']].to_dict(orient='records'),
+            df_cf_edges_with_units[['method', 'category', 'indicator', 'unit']].to_dict(orient='records'),
+            df_cf_edges_with_units['cf'],
+        )
+    )
+
+    return dict_cf_edges
 
 out = load_ecoinvent_characterization_data(path=path, version='3.11')
 
-list_dicts_cf_nodes = out['list_dicts_cf_nodes']
-list_dicts_cf_edges = out['list_dicts_cf_edges']
+# %%
+
+from greengraph.utility.data import add_uuid_to_unique_dicts
+from greengraph.utility.data import get_unique_dicts
+
+char = [tup[0] for tup in out]
+
+char = add_uuid_to_unique_dicts(char)
+
+seen = set()
+unique_dicts = []
+for d in char:
+    if d['uuid'] not in seen:
+        unique_dicts.append(d)
+        seen.add(d['uuid'])
+
+# %%
+
+bio = [tup[1] for tup in out]
 
 # %%
 
@@ -101,6 +124,8 @@ G = graph_system_from_node_and_edge_lists(
 
 # %%
 
+# %%
+
 GG = nx.MultiDiGraph()
 
 GG.add_nodes_from(
@@ -137,7 +162,7 @@ GG.add_nodes_from(
     ]
 )
 
-GG.add_edges_from(
+GG.add_edges_from(2
     [
         (
             [node for node, attr in G.nodes(data=True) if attr['name']==edge['name']][0],
@@ -151,19 +176,77 @@ GG.add_edges_from(
 
 from greengraph.utility.data import create_dynamic_lookup_dictionary
 
-dict_lookup = create_dynamic_lookup_dictionary(
-    list_dicts=[
-        {**attr, 'uuid': node}
-        for node, attr in G.nodes(data=True)
-        if attr.get('type') == 'extension'
-    ],
-    list_key_fields=['name'],
-    value_field='uuid'
+def add_characterization_to_graph_from_edges(
+    G: nx.MultiDiGraph,
+    assign_new_uuids: bool,
+    str_extension_nodes_uuid: str,
+    str_characterization_nodes_uuid: str,
+    list_dicts_characterization_node_metadata: list[dict],
+    list_dicts_biosphere_node_metadata: list[dict],
+    list_tuples_characterization_edges: list[tuple],
+) -> None:
+    r"""
+
+    ```python
+    [
+        (
+            {
+                'name': 'abc'
+            },
+            {
+                'name': 'bcd',
+                '
+            }
+    ```
+
+    """
+    for node in list_dicts_characterization_node_metadata:
+        if set(['name', 'unit']).issubset(node.keys()) == False:
+            raise ValueError("At least 'name' and 'unit' attributes must be present for every node.")
+        node['type'] = 'characterization'
+        G.add_node(node[str_characterization_nodes_uuid], **node)
+
+    dict_extension_node_lookup = create_dynamic_lookup_dictionary(
+        list_dicts=[
+            {**attr, 'uuid': node}
+            for node, attr in G.nodes(data=True)
+            if attr.get('type') == 'extension'
+        ],
+        list_key_fields=['name'],
+        value_field='uuid'
+    )
+
+
+    [
+        (
+            dict_lookup.get(tuple([edge['name']])),
+            edge['uuid'],
+            edge['cf']
+        ) for edge in list_dicts_cf_edges
+    ]
+
+    
+    if assign_new_uuids:
+        G = nx.relabel_nodes(
+            G=G,
+            mapping={
+                node: str(uuid.uuid4())
+                for node, attr in G.nodes(data=True) if attr.get('type') == 'characterization'
+            }
+        )
+
+
+
+
+add_characterization_to_graph_from_edges(
+    G=G,
+    assign_new_uuids=True,
+    str_extension_nodes_uuid='name',
+    str_characterization_nodes_uuid: str,
+    list_dicts_characterization_node_metadata: list[dict],
+    list_dicts_biosphere_node_metadata: list[dict],
+    list_tuples_characterization_edges: list[tuple],
 )
 
 # %%
 
-[
-    dict_lookup.get(tuple([edge['name']]))
-    for edge in list_dicts_cf_edges[0:5]
-]

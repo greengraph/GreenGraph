@@ -328,10 +328,8 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
             "unit": elem.unitName.text,
             "chemical_formula": elem.get("formula") or None,
             "CAS": elem.get("casNumber") or None,
-            "compartments": [
-                elem.compartment.compartment.text,
-                elem.compartment.subcompartment.text,
-            ],
+            "compartment": elem.compartment.compartment.text,
+            "subcompartment": elem.compartment.subcompartment.text,
             "synonyms": [obj.text for obj in elem.iterchildren(NS + "synonym")],
         }
         for elem in objectify.parse(open(FLOWS_FP))
@@ -536,7 +534,8 @@ def _prepare_ecoinvent_node_and_edge_lists(
             'unit': extension_attributes['unit'],
             'chemical_formula': extension_attributes['chemical_formula'],
             'CAS': extension_attributes['CAS'],
-            'compartments': extension_attributes['compartments'],
+            'compartment': extension_attributes['compartment'],
+            'subcompartment': extension_attributes['subcompartment'],
             'synonyms': extension_attributes['synonyms'],
             'brightway_code_extension': extension_code
         }
