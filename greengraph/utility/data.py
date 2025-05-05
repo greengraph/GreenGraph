@@ -1,5 +1,5 @@
 import networkx as nx
-
+import copy
 
 def _make_hashable(value) -> object:
     """
@@ -193,6 +193,6 @@ def _remove_duplicate_dictionaries(list_dicts) -> list[dict]:
             pass
         else:
             list_seen_metadata_tuples.add(node_metadata_tuple)
-            list_output.append(dict_node_metadata)
+            list_output.append(copy.deepcopy(dict_node_metadata))
 
     return list_output

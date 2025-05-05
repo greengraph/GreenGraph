@@ -14,6 +14,15 @@ def load_ecoinvent_characterization_data(
     path: Path,
     version: str,
 ) -> list:
+    r"""
+
+    Warnings
+    --------
+    In the `ecoinvent 3.10_LCIA_implementation` Excel file, sheet `Indicators`,
+    rows are heavily duplicated. It is necessary to drop duplicates
+    before merging with the `CFs` sheet. This is not the case in the
+    `ecoinvent 3.11_LCIA_implementation` Excel file.
+    """
     _versions_name_units = {
         "3.11": "CFs",
         "3.10": "CFs",
@@ -67,8 +76,6 @@ def load_ecoinvent_characterization_data(
 out = load_ecoinvent_characterization_data(path=path, version='3.11')
 
 # %%
-out310 = load_ecoinvent_characterization_data(path=path_310, version='3.10')
-# %%
 
 from pathlib import Path
 import networkx as nx
@@ -107,6 +114,8 @@ G = graph_system_from_node_and_edge_lists(
 
 # %%
 
+# %%
+
 from greengraph.utility.data import (
     _create_dynamic_lookup_dictionary,
     _dict_to_tuple,
@@ -120,59 +129,32 @@ for node in list_nodes_char:
     node['type'] = 'characterization'
     node['uuid'] = str(uuid.uuid4())
 
-list_uuids_char = [node['uuid'] for node in list_nodes_char]
+GG = nx.MultiDiGraph()
+
+GG.add_nodes_from(
+    [
+        (
+            node['uuid'], 
+            {key: value for key, value in node.items() if key != 'uuid'}
+        )
+        for node in list_nodes_char
+    ]
+)
+
+dict_lookup_characterization_nodes = _create_dynamic_lookup_dictionary(
+    G=GG,
+    node_type='characterization',
+    list_attributes=['method', 'category', 'indicator', 'unit']
+)
 
 list_uuids_ext = [dict_lookup_extension_nodes.get(_dict_to_tuple(item[0])) for item in out]
+list_uuids_char = [dict_lookup_characterization_nodes.get(_dict_to_tuple(item[1])) for item in out]
 
-
-
-# %%
-
-GG = nx.MultiDiGraph()
-
-GG.add_nodes_from(
-    [
-        (
-            node['uuid'], 
-            {key: value for key, value in node.items() if key != 'uuid'}
-        )
-        for node in list_dicts_cf_nodes
-    ]
-)
 
 GG.add_edges_from(
-    [
-        (
-            dict_names_to_uuids.get(edge['name']),
-            edge['uuid'],
-            edge['cf']
-        ) for edge in list_dicts_cf_edges
-    ]
+    list(zip(list_uuids_ext, list_uuids_char, [i[2] for i in out]))
 )
 
-# %%
-
-GG = nx.MultiDiGraph()
-
-GG.add_nodes_from(
-    [
-        (
-            node['uuid'], 
-            {key: value for key, value in node.items() if key != 'uuid'}
-        )
-        for node in list_dicts_cf_nodes
-    ]
-)
-
-GG.add_edges_from(2
-    [
-        (
-            [node for node, attr in G.nodes(data=True) if attr['name']==edge['name']][0],
-            edge['uuid'],
-            edge['cf']
-        ) for edge in list_dicts_cf_edges
-    ]
-)
 
 # %%
 
