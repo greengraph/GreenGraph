@@ -20,11 +20,14 @@ def graph_system_from_input_output_matrices(
     assign_new_uuids: bool,
     str_production_nodes_uuid: str,
     str_extension_nodes_uuid: str,
+    str_indicator_nodes_uuid: str,
     matrix_convention: str,
     array_production: np.ndarray,
     array_extension: np.ndarray,
+    array_indicator: np.ndarray,
     list_dicts_production_node_metadata: list[dict],
     list_dicts_extension_node_metadata: list[dict],
+    list_dicts_indicator_node_metadata: list[dict],
 ) -> nx.MultiDiGraph:
     r"""
     Create a MultiDiGraph from technosphere and biosphere matrices.
@@ -140,24 +143,44 @@ def graph_system_from_input_output_matrices(
         - If the number of nodes in the combined graph does not match the number of metadata dictionaries.
 
     """
+    if (
+        array_production is None or
+        list_dicts_production_node_metadata is None or
+        array_extension is None or
+        list_dicts_extension_node_metadata is None
+    ):
+        raise ValueError("At least a production matrix+metadata and extension matrix+metadata must be provided.")
+    if array_indicator is None and list_dicts_indicator_node_metadata is not None: # '== None' would perform NumPy element-wise check
+        raise ValueError("If an indicator matrix is provided, metadata must also also be provided.")
+    if array_indicator is not None and list_dicts_indicator_node_metadata is None:
+        raise ValueError("If an indicator metadata list is provided, a matrix must also also be provided.")
+
     if array_production.shape[0] != array_production.shape[1]:
         raise ValueError("Production matrix must be square.")
-    if array_extension.shape[0] != array_production.shape[0]:
+    if array_extension.shape[1] != array_production.shape[0]:
         raise ValueError("Dimension mismatch between production and extension matrices.")
+    if array_indicator is not None:
+        if array_indicator.shape[1] != array_extension.shape[0]:
+            raise ValueError("Dimension mismatch between indicator and extension matrices.")
+    
+    list_arrays_for_check = [
+        (array_production, list_dicts_production_node_metadata, 'production'),
+        (array_extension, list_dicts_extension_node_metadata, 'extension')
+    ]
 
-    for matrix, metadata, name in [
-        (array_production, list_dicts_production_node_metadata, "production"),
-        (array_extension, list_dicts_extension_node_metadata,  "biosphere"),
-    ]:
+    if array_indicator is not None:
+        list_arrays_for_check.append((array_indicator, list_dicts_indicator_node_metadata, 'indicator'))
+    
+    for matrix, metadata, name in list_arrays_for_check:
         if not np.issubdtype(matrix.dtype, np.number):
             raise TypeError(f"All entries in the {name} matrix must be numeric.")
         if matrix.shape[0] != len(metadata):
-            raise ValueError(f"Dimensions of the {name} matrix does not match metadata dictionary length.")
-    
+            raise ValueError(f"Dimensions of the {name} matrix ({matrix.shape[0]}) does not match metadata dictionary length ({len(metadata)}).")
+        
     for node_metadata in list_dicts_production_node_metadata:
         for key in ['name', 'unit']:
             if key not in node_metadata:
-                raise ValueError(f"Metadata dictionary of every node must contain a '{key}' key.")
+                raise ValueError(f"Metadata dictionary of every node must contain at least a 'name and 'unit' key.")
 
     if not matrix_convention in ['I-A', 'A']:
         raise ValueError("matrix_convention must be 'I-A' or 'A'.")
@@ -191,6 +214,17 @@ def graph_system_from_input_output_matrices(
         dict_node_metadata['index'] = idx       
         dict_node_metadata['type'] = 'extension'
         dict_node_metadata['system'] = name_system
+
+    # Indicator Metadata Parsing
+    if array_indicator is not None:
+        for idx, dict_node_metadata in enumerate(list_dicts_indicator_node_metadata):
+            if assign_new_uuids:
+                dict_node_metadata['uuid'] = str(uuid.uuid4())
+            else:
+                dict_node_metadata['uuid'] = dict_node_metadata[str_indicator_nodes_uuid]
+            dict_node_metadata['index'] = idx
+            dict_node_metadata['type'] = 'indicator'
+            dict_node_metadata['system'] = name_system
     
     array_production = xr.DataArray(
         np.abs(array_production),
@@ -208,6 +242,16 @@ def graph_system_from_input_output_matrices(
             'cols': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata]
         }
     )
+
+    if array_indicator is not None:
+        array_indicator = xr.DataArray(
+            array_indicator,
+            dims=['rows', 'cols'],
+            coords={
+                'rows': [node_metadata['uuid'] for node_metadata in list_dicts_indicator_node_metadata],
+                'cols': [node_metadata['uuid'] for node_metadata in list_dicts_extension_node_metadata]
+            }
+        )
     
     with logtimer("creating MultiDiGraph from technosphere matrix."):
         logging.info(
@@ -229,26 +273,51 @@ def graph_system_from_input_output_matrices(
             matrix=array_extension.values,
             nodes_axis_0=array_extension.coords['rows'].values.tolist(),
             nodes_axis_1=array_extension.coords['cols'].values.tolist(),
-            attributes_nodes_axis_0={'type': 'biosphere'},
-            attributes_nodes_axis_1={'type': 'technosphere'},
+            attributes_nodes_axis_0={'type': 'extension'},
+            attributes_nodes_axis_1={'type': 'production'},
             create_using=nx.MultiDiGraph
         )
+
+    if array_indicator is not None:
+        with logtimer("creating MultiDiGraph from indicator matrix."):
+            logging.info(
+                f"# of nodes: {len(array_indicator.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_indicator) & (array_indicator != 0))):,}"
+            )
+            Q = from_biadjacency_matrix(
+                matrix=array_indicator.values,
+                nodes_axis_0=array_indicator.coords['rows'].values.tolist(),
+                nodes_axis_1=array_indicator.coords['cols'].values.tolist(),
+                attributes_nodes_axis_0={'type': 'indicator'},
+                attributes_nodes_axis_1={'type': 'extension'},
+                create_using=nx.MultiDiGraph
+            )
 
     with logtimer("setting node attributes."):
         for node_metadata in list_dicts_production_node_metadata:
             for key, value in node_metadata.items():
-                G.nodes[node_metadata['uuid']][key] = value
+                A.nodes[node_metadata['uuid']][key] = value
         for node_metadata in list_dicts_extension_node_metadata:
             for key, value in node_metadata.items():
                 B.nodes[node_metadata['uuid']][key] = value
+        if array_indicator is not None:
+            for node_metadata in list_dicts_indicator_node_metadata:
+                for key, value in node_metadata.items():
+                    Q.nodes[node_metadata['uuid']][key] = value
 
-    with logtimer("merging production and extension graphs."):
-        BcomposeA = nx.compose(B, A)
-        del A
-        del B
-
-    return BcomposeA
-
+    with logtimer("merging production and extension graphs. Whoop-whoop!"):
+        if array_indicator is None:
+            BcomposeA = nx.compose(B, A)
+            del A
+            del B
+            return BcomposeA
+        elif array_indicator is not None:
+            BcomposeA = nx.compose(B, A)
+            del A
+            del B
+            QcomposeBA = nx.compose(Q, BcomposeA)
+            del Q
+            del BcomposeA
+            return QcomposeBA
 
 def graph_system_from_node_and_edge_lists(
     name_system: str,
@@ -366,16 +435,17 @@ def graph_system_from_node_and_edge_lists(
         node['system'] = name_system
         B.add_node(node[str_extension_nodes_uuid], **node)
                    
-    A.add_edges_from(list_tuples_production_edges)
-    B.add_edges_from(list_tuples_extension_edges)
+    A.add_edges_from(list_tuples_production_edges, weight='flow')
+    B.add_edges_from(list_tuples_extension_edges, weight='flow')
     G = nx.compose(A, B)
 
     if len(A.nodes) != len(list_dicts_production_nodes_metadata):
         raise ValueError("Number of nodes in production graph does not match number of metadata dictionaries.")
-    if len(B.nodes) != (len(list_dicts_extension_nodes_metadata) + len(list_tuples_production_edges)):
-        raise ValueError("Number of nodes in extension graph does not match number of metadata dictionaries.")
-    if len(G.nodes) != (len(list_dicts_production_nodes_metadata) + len(list_dicts_extension_nodes_metadata)):
-        raise ValueError("Number of nodes in combined graph does not match number of metadata dictionaries.")
+    # some ecoinvent versions have more metadata dictionaries than nodes
+    # if len(B.nodes) != (len(list_dicts_extension_nodes_metadata) + len(list_tuples_production_edges)):
+    #     raise ValueError("Number of nodes in extension graph does not match number of metadata dictionaries.")
+    # if len(G.nodes) != (len(list_dicts_production_nodes_metadata) + len(list_dicts_extension_nodes_metadata)):
+    #     raise ValueError("Number of nodes in combined graph does not match number of metadata dictionaries.")
 
     if assign_new_uuids:
         G = nx.relabel_nodes(

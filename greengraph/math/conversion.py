@@ -27,10 +27,10 @@ def _generate_matrices_from_graph(
         lambdafunction_sort_keys = lambda node: node
     else:
         lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
-    list_sorted_uuids_A = sorted(
-        [node for node, attr in G.nodes(data=True) if attr('type') == 'production'],
-        key=lambdafunction_sort_keys
-    )
+        list_sorted_uuids_A = sorted(
+            [node for node, attr in G.nodes(data=True) if attr('type') == 'production'],
+            key=lambdafunction_sort_keys
+        )
 
     with logtimer("Generating technosphere matrix."):
     A = nx.algorithms.bipartite.biadjacency_matrix(
@@ -59,10 +59,10 @@ def _generate_matrices_from_graph(
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
-        list_sorted_uuids_B = sorted(
-            [node for node, attr in G.nodes(data=True) if attr('type') == 'biosphere'],
-            key=lambdafunction_sort_keys
-        )
+            list_sorted_uuids_B = sorted(
+                [node for node, attr in G.nodes(data=True) if attr('type') == 'biosphere'],
+                key=lambdafunction_sort_keys
+            )
 
         with logtimer("Generating biosphere matrix."):
             B = nx.algorithms.bipartite.biadjacency_matrix(
@@ -90,10 +90,10 @@ def _generate_matrices_from_graph(
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
-        list_sorted_uuids_Q = sorted(
-            [node for node, attr in G.nodes(data=True) if attr('type') == 'biosphere'],
-            key=lambdafunction_sort_keys
-        )
+            list_sorted_uuids_Q = sorted(
+                [node for node, attr in G.nodes(data=True) if attr('type') == 'biosphere'],
+                key=lambdafunction_sort_keys
+            )
 
         with logtimer("Generating characterization matrix."):
             Q = nx.algorithms.bipartite.biadjacency_matrix(

@@ -1,11 +1,7 @@
-import hashlib
 from lxml import objectify
 from dataclasses import dataclass
-import pyecospold
-from pyecospold.model_v2 import IntermediateExchange, Activity, FlowData
 from pathlib import Path
 from greengraph.utility.logging import logtimer
-
 
 
 
@@ -14,6 +10,12 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
     Given a path to the root directory containing EcoSpold XML files, extracts
     the relevant `MasterData` XML files and returns a dictionary containing
     mappings for activities, products, geographies, and ecosphere flows.
+
+    Warnings
+    --------
+    The file must be eg.:
+    `/Users/michaelweinold/data/ecoinvent 3.7.1_apos_ecoSpold02`
+    without `lcia`!
 
     Notes
     -----
@@ -247,11 +249,14 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         A dictionary containing mappings for activities, products, geographies, and ecosphere flows.
     """
 
+    RELEASE_PATH = path
+
     NS = "{http://www.EcoInvent.org/EcoSpold02}"
-    ACTIVITIES_FP = path / "MasterData" / "ActivityIndex.xml"
-    PRODUCTS_FP = path / "MasterData" / "IntermediateExchanges.xml"
-    GEOGRAPHIES_FP = path / "MasterData" / "Geographies.xml"
-    ACTIVITY_NAME_FP = path / "MasterData" / "ActivityNames.xml"
+
+    ACTIVITIES_FP = RELEASE_PATH / "MasterData" / "ActivityIndex.xml"
+    GEOGRAPHIES_FP = RELEASE_PATH / "MasterData" / "Geographies.xml"
+    ACTIVITY_NAME_FP = RELEASE_PATH / "MasterData" / "ActivityNames.xml"
+
     SPECIAL_ACTIVITY_TYPE_MAP: dict[int, str] = {
         0: "ordinary transforming activity (default)",
         1: "market activity",
@@ -265,7 +270,6 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         9: "correction activity",
         10: "market group",
     }
-    FLOWS_FP = path / "MasterData" / "ElementaryExchanges.xml"
 
     geographies_mapping = {
         elem.get("id"): elem.name.text
@@ -279,6 +283,7 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         .getroot()
         .iterchildren(NS + "activityName")
     }
+
     activity_mapping = {
         elem.get("id"): {
             "name": activity_names_mapping[elem.get("activityNameId")],
@@ -292,8 +297,9 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         .iterchildren(NS + "activityIndexEntry")
     }
 
+    PRODUCTS_FP = RELEASE_PATH / "MasterData" / "IntermediateExchanges.xml"
 
-    def _maybe_missing(
+    def maybe_missing(
         element: objectify.ObjectifiedElement, attribute: str, pi: bool | None = False
     ):
         try:
@@ -304,13 +310,12 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         except AttributeError:
             return ""
 
-
     product_mapping = {
         elem.get("id"): {
             "name": elem.name.text,
             "unit": elem.unitName.text,
-            "comment": _maybe_missing(elem, "comment"),
-            "product_information": _maybe_missing(elem, "productInformation", True),
+            "comment": maybe_missing(elem, "comment"),
+            "product_information": maybe_missing(elem, "productInformation", True),
             "classifications": dict(
                 [
                     (c.classificationSystem.text, c.classificationValue.text)
@@ -321,6 +326,7 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         for elem in objectify.parse(open(PRODUCTS_FP)).getroot().iterchildren()
     }
 
+    FLOWS_FP = RELEASE_PATH / "MasterData" / "ElementaryExchanges.xml"
 
     ecosphere_flows_mapping = {
         elem.get("id"): {
@@ -337,30 +343,12 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         .iterchildren(NS + "elementaryExchange")
     }
 
-    INPUTS = ("Materials/Fuels", "Electricity/Heat", "Services", "From Technosphere (unspecified)")
-
-    process_nodes, product_nodes = {}, {}
-    technosphere_edges, ecosphere_edges = [], []
-
-
-    def _get_process_id(edge: IntermediateExchange, activity: Activity) -> str:
-        return edge.activityLinkId or activity.id
-
-
-    def _reference_product(flows: FlowData) -> str:
-        candidates = [
-            edge for edge in flows.intermediateExchanges
-            if edge.groupStr == "ReferenceProduct"
-            and edge.amount != 0
-        ]
-        if not len(candidates) == 1:
-            raise ValueError("Can't find reference product")
-        return candidates[0].intermediateExchangeId
+    import hashlib
 
     _ = lambda str: str.encode("utf-8")
 
 
-    def _unique_identifier(process_dict: dict, product_dict: dict, type: str) -> str:
+    def unique_identifier(process_dict: dict, product_dict: dict, type: str) -> str:
         return hashlib.md5(
             _(process_dict["name"])
             + _(product_dict["name"])
@@ -368,6 +356,8 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
             + _(process_dict["geography"])
             + _(type)
         ).hexdigest()
+    
+    from dataclasses import dataclass
 
     @dataclass
     class TechnosphereEdge:
@@ -382,18 +372,41 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
         process: str  # Our unique identifier
         amount: float
 
+    import pyecospold
+    from pyecospold.model_v2 import IntermediateExchange, Activity, FlowData
+    from tqdm import tqdm
+
+    process_nodes, product_nodes = {}, {}
+    technosphere_edges, ecosphere_edges = [], []
+    INPUTS = ("Materials/Fuels", "Electricity/Heat", "Services", "From Technosphere (unspecified)")
+
+    def get_process_id(edge: IntermediateExchange, activity: Activity) -> str:
+        return edge.activityLinkId or activity.id
+
+
+    def reference_product(flows: FlowData) -> str:
+        candidates = [
+            edge for edge in flows.intermediateExchanges
+            if edge.groupStr == "ReferenceProduct"
+            and edge.amount != 0
+        ]
+        if not len(candidates) == 1:
+            raise ValueError("Can't find reference product")
+        return candidates[0].intermediateExchangeId
+
+
     with logtimer('reading EcoSpold XML files'):
-        for filepath in (path / "datasets").iterdir():
+        for filepath in tqdm((RELEASE_PATH / "datasets").iterdir()):
             if not filepath.name.endswith(".spold"):
                 continue
             ecospold = pyecospold.parse_file_v2(filepath)
             activity = ecospold.activityDataset.activityDescription.activity[0]
 
             this_process = activity_mapping[activity.id]
-            this_product = product_mapping[_reference_product(ecospold.activityDataset.flowData)]
+            this_product = product_mapping[reference_product(ecospold.activityDataset.flowData)]
 
-            this_process_id = _unique_identifier(this_process, this_product, "process")
-            this_product_id = _unique_identifier(this_process, this_product, "product")
+            this_process_id = unique_identifier(this_process, this_product, "process")
+            this_product_id = unique_identifier(this_process, this_product, "product")
 
             process_nodes[this_process_id] = (this_process, this_product)
             product_nodes[this_product_id] = (this_process, this_product)
@@ -402,9 +415,9 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
                 if not edge.amount:
                     continue
 
-                other_process = activity_mapping[_get_process_id(edge=edge, activity=activity)]
+                other_process = activity_mapping[get_process_id(edge=edge, activity=activity)]
                 other_product = product_mapping[edge.intermediateExchangeId]
-                other_product_id = _unique_identifier(other_process, other_product, "product")
+                other_product_id = unique_identifier(other_process, other_product, "product")
 
                 is_input_edge = edge.groupStr in INPUTS
                 if is_input_edge:
@@ -428,14 +441,14 @@ def _extract_ecospold_xml_files(path: Path) -> dict:
                     process=this_process_id,
                     amount=edge.amount
                 ))
-
-        return {
-            "process_nodes": process_nodes,
-            "product_nodes": product_nodes,
-            "ecosphere_flows_mapping": ecosphere_flows_mapping,
-            "technosphere_edges": technosphere_edges,
-            "ecosphere_edges": ecosphere_edges,
-        }
+    
+    return {
+        "process_nodes": process_nodes,
+        "product_nodes": product_nodes,
+        "ecosphere_flows_mapping": ecosphere_flows_mapping,
+        "technosphere_edges": technosphere_edges,
+        "ecosphere_edges": ecosphere_edges,
+    }
 
 
 def _prepare_ecoinvent_node_and_edge_lists(
