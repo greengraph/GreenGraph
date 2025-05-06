@@ -275,6 +275,11 @@ def graph_system_from_input_output_matrices(
             nodes_axis_1=array_extension.coords['cols'].values.tolist(),
             attributes_nodes_axis_0={'type': 'extension'},
             attributes_nodes_axis_1={'type': 'production'},
+            amount_attribute='flow',
+            dict_attributes={
+                'type_origin': 'production',
+                'type_destination': 'extension',
+            },
             create_using=nx.MultiDiGraph
         )
 
@@ -289,6 +294,11 @@ def graph_system_from_input_output_matrices(
                 nodes_axis_1=array_indicator.coords['cols'].values.tolist(),
                 attributes_nodes_axis_0={'type': 'indicator'},
                 attributes_nodes_axis_1={'type': 'extension'},
+                amount_attribute='weight',
+                dict_attributes={
+                    'type_origin': 'extension',
+                    'type_destination': 'indicator',
+                },
                 create_using=nx.MultiDiGraph
             )
 
@@ -318,6 +328,7 @@ def graph_system_from_input_output_matrices(
             del Q
             del BcomposeA
             return QcomposeBA
+
 
 def graph_system_from_node_and_edge_lists(
     name_system: str,
@@ -454,3 +465,23 @@ def graph_system_from_node_and_edge_lists(
         )
     
     return G
+
+
+# %%
+
+from greengraph.importers.databases.inputoutput import useeio
+dct = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
+G = graph_system_from_input_output_matrices(
+    name_system='useeio',
+    assign_new_uuids=True,
+    str_extension_nodes_uuid='name',
+    str_production_nodes_uuid='name',
+    str_indicator_nodes_uuid='name',
+    matrix_convention='I-A',
+    array_production=dct['A'].to_numpy(),
+    array_extension=dct['B'].to_numpy(),
+    array_indicator=dct['C'].to_numpy(),
+    list_dicts_production_node_metadata=dct['dicts_A_metadata'],
+    list_dicts_extension_node_metadata=dct['dicts_B_metadata'],
+    list_dicts_indicator_node_metadata=dct['dicts_C_metadata'],
+)

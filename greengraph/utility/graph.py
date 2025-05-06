@@ -7,6 +7,8 @@ def from_biadjacency_matrix(
     nodes_axis_1: list | np.ndarray,
     attributes_nodes_axis_0: dict,
     attributes_nodes_axis_1: dict,
+    amount_attribute: str,
+    dict_attributes: dict,
     create_using: type = nx.MultiDiGraph,
 ) -> nx.MultiDiGraph:
     """
@@ -66,7 +68,12 @@ def from_biadjacency_matrix(
     col_labels_nonzero = np.array(nodes_axis_1)[col_indices_nonzero]
     
     values = matrix[row_indices_nonzero, col_indices_nonzero]
-    edges = [(row, col, {'flow': val}) for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values)]
+    edges = [
+        (
+            str(row), str(col), {amount_attribute: float(val), **dict_attributes})
+            for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values
+        )
+    ]
 
     G.add_edges_from(edges)
 
