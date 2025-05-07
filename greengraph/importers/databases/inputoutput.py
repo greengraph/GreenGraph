@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 import requests
@@ -5,7 +6,9 @@ import zipfile
 from pathlib import Path
 from io import BytesIO
 from greengraph.utility.logging import logtimer
-
+import logging
+from greengraph import APP_CACHE_BASE_DIR
+from greengraph.utility.download import _load_file_from_zenodo_with_caching
 
 class useeio:
     """
@@ -66,10 +69,12 @@ class useeio:
         HTTPError
             If the request to download the USEEIO data fails.
         """
-        with logtimer(f"downloading USEEIO data (v{version}) from Zenodo."):
-            download = requests.get(f"https://zenodo.org/records/15272306/files/USEEIOv{version}.xlsx?download=1")
-            download.raise_for_status()
-            excel_file = BytesIO(download.content)
+        excel_file = _load_file_from_zenodo_with_caching(
+            name_file=f'USEEIOv{version}.xlsx',
+            name_dir_cache='useeio',
+            zenodo_record='15272306',
+        )
+
         return useeio.format_useeio_matrices(path_useeio=excel_file)
         
     @staticmethod
@@ -142,6 +147,13 @@ class useeio:
                 index_col=1,
                 engine='openpyxl',
             )
+            df_A_annual_production = pd.read_excel(
+                io=path_useeio,
+                sheet_name='x',
+                header=0,
+                index_col=0,
+                engine='openpyxl',
+            )
             df_C_metadata = pd.read_excel(
                 io=path_useeio,
                 sheet_name='indicators',
@@ -159,23 +171,34 @@ class useeio:
 
         with logtimer(f"modifying USEEIO data."):
             columns_flow_metadata = {
-                    'Flowable': 'name',
-                    'Context': 'context',
-                    'Unit': 'unit'
-                }
+                'Flowable': 'name',
+                'Context': 'context',
+                'Unit': 'unit'
+            }
             df_B_metadata = df_B_metadata.rename(columns=columns_flow_metadata)   
             df_B_metadata = df_B_metadata[columns_flow_metadata.values()]
             dicts_B_metadata = df_B_metadata.to_dict(orient='records')
 
             columns_sector_metadata = {
-                    'Name': 'name',
-                    'Location': 'location',
-                }
+                'Name': 'name',
+                'Location': 'location',
+                'Code': 'code',
+                'Category': 'category',
+            }
             df_A_metadata = df_A_metadata.rename(columns=columns_sector_metadata)
             df_A_metadata = df_A_metadata[columns_sector_metadata.values()]
+            df_A_metadata['unit'] = 'USD'
+
+            df_A_annual_production = df_A_annual_production.rename(columns={'x': 'annual_production'})
+            df_A_metadata = pd.merge(
+                left=df_A_metadata,
+                right=df_A_annual_production,
+                how='left',
+                left_index=True,
+                right_index=True
+            )
+
             dicts_A_metadata = df_A_metadata.to_dict(orient='records')
-            for sector in dicts_A_metadata:
-                sector['unit'] = 'USD'
 
             columns_indicator_metadata = {
                 'Name': 'name',
