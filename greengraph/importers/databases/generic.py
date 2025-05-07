@@ -465,23 +465,3 @@ def graph_system_from_node_and_edge_lists(
         )
     
     return G
-
-
-# %%
-
-from greengraph.importers.databases.inputoutput import useeio
-dct = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
-G = graph_system_from_input_output_matrices(
-    name_system='useeio',
-    assign_new_uuids=True,
-    str_extension_nodes_uuid='name',
-    str_production_nodes_uuid='name',
-    str_indicator_nodes_uuid='name',
-    matrix_convention='I-A',
-    array_production=dct['A'].to_numpy(),
-    array_extension=dct['B'].to_numpy(),
-    array_indicator=dct['C'].to_numpy(),
-    list_dicts_production_node_metadata=dct['dicts_A_metadata'],
-    list_dicts_extension_node_metadata=dct['dicts_B_metadata'],
-    list_dicts_indicator_node_metadata=dct['dicts_C_metadata'],
-)
