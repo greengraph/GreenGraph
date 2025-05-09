@@ -140,16 +140,3 @@ G = graph_system_from_input_output_matrices(
     list_dicts_extension_node_metadata=dct['dicts_B_metadata'],
     list_dicts_indicator_node_metadata=dct['dicts_C_metadata'],
 )
-
-# %%
-
-matrices = _generate_matrices_from_graph(
-    G=G,
-    matrixformat='dense',
-    A=True,
-    B=True,
-    Q=True,
-    A_sort_attributes=None,
-    B_sort_attributes=None,
-    Q_sort_attributes=None
-)

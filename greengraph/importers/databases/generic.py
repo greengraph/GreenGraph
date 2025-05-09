@@ -1,6 +1,6 @@
 r"""
-This module contains functions to turn properly prepared dataframes/etc.
-into a greengraph graph class.
+This module contains functions to turn properly formatted 
+arrays, dataframe, metadata lists, etc. into a greengraph graph.
 """
 
 # %%

@@ -1,12 +1,7 @@
+import logging
 from contextlib import contextmanager
 from datetime import datetime
-import logging
 
-logging.basicConfig(
-    level=logging.INFO, 
-    format='greengraph | %(levelname)s | %(message)s',
-    handlers=[logging.StreamHandler()]  # Output to console
-)
 
 @contextmanager
 def logtimer(message):

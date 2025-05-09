@@ -235,7 +235,7 @@ class exiobase:
     """
 
     _available_versions = {
-        '3.8.2': '5589597',
+        '3.8.2': {'zenodo_record': '5589597'},
     }
     
     @staticmethod
@@ -293,16 +293,17 @@ class exiobase:
         if type not in ['ixi', 'pxp']:
             raise ValueError("type must be either 'ixi' or 'pxp'")
 
-        with logtimer(f"downloading Exiobase data (v{version}) from Zenodo."):
-            download = requests.get(f"https://zenodo.org/records/{exiobase._available_versions[version]}/files/IOT_{year}_{type}.zip?download=1")
-            download.raise_for_status()
-            with zipfile.ZipFile(BytesIO(download.content), 'r') as zip:
-                file_A = zip.extract(f"IOT_{year}_{type}/A.txt")
-                file_S = zip.extract(f"IOT_{year}_{type}/satellite/S.txt")
-                file_S_metadata = zip.extract(f"IOT_{year}_{type}/satellite/unit.txt")
-                download.close()
-                del download
-                del zip
+        file = _load_file_from_zenodo_with_caching(
+            name_file=f"IOT_{year}_{type}.zip",
+            name_dir_cache="useeio",
+            zenodo_record=exiobase._available_versions[version]['zenodo_record'],
+        )
+
+        with logtimer(f"extracting Exiobase data from zip file."):
+            with zipfile.ZipFile(BytesIO(file.content), 'r') as zip:
+                    file_A = zip.extract(f"IOT_{year}_{type}/A.txt")
+                    file_S = zip.extract(f"IOT_{year}_{type}/satellite/S.txt")
+                    file_S_metadata = zip.extract(f"IOT_{year}_{type}/satellite/unit.txt")
         
         return exiobase.format_exiobase_matrices(
             path_A=Path(file_A),
