@@ -120,8 +120,48 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         self,
         graph: nx.MultiDiGraph = None,
         **attr
-    ):
+    ) -> None:
         super().__init__(graph, **attr)
+
+    def _validate_node_attributes(
+        self,
+        node,
+        attr
+    ) -> None:
+        """
+        Checks if the node 'node_id' will possess the required 'name' and 'type'
+        attributes after applying the 'attrs_of_current_call'.
+        Raises ValueError if the validation fails.
+        """
+        # Determine what the node's attributes would be after the current operation.
+        # Start with existing attributes if the node is already in the graph.
+        final_attrs = {}
+        if node_id in self:  # Check if node already exists
+            final_attrs.update(self.nodes[node_id])
+        
+        # Then, apply the attributes from the current call (these would override existing ones)
+        final_attrs.update(attrs_of_current_call)
+
+        # Perform the validation
+        if 'name' not in final_attrs:
+            raise ValueError(
+                f"Node '{node_id}' must have a 'name' attribute. "
+                f"Attempted operation with attributes for this call: {attrs_of_current_call}. "
+                f"Resulting attributes would lack 'name'."
+            )
+        if 'type' not in final_attrs:
+            raise ValueError(
+                f"Node '{node_id}' must have a 'type' attribute. "
+                f"Attempted operation with attributes for this call: {attrs_of_current_call}. "
+                f"Resulting attributes would lack 'type'."
+            )
+        
+        # Optional: Add type checks for the attribute values themselves
+        # For example, if 'name' must be a string:
+        # if not isinstance(final_attrs['name'], str):
+        #     raise TypeError(f"Attribute 'name' for node '{node_id}' must be a string.")
+        # if not isinstance(final_attrs['type'], str): # Or a specific enum/type
+        #     raise TypeError(f"Attribute 'type' for node '{node_id}' must be a string (or other expected type).")
 
 
     def get_node_by_attributes(
@@ -176,6 +216,9 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
             raise AttributeError("Multiple nodes found with the given attributes. Please refine your attributes.")
         else:
             return list_of_nodes[0] if data else list_of_nodes[0][0]
+        
+
+    
 
 
 class GreenGraphMatrixContainer():

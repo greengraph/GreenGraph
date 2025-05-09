@@ -24,3 +24,13 @@ def remove_cache_dir():
             logging.error(f"Error removing cache directory {APP_CACHE_BASE_DIR}: {e}")
     else:
         logging.info(f"Cache directory {APP_CACHE_BASE_DIR} does not exist. Nothing to remove.")
+
+
+def cache_dir_path():
+    """Returns the path to the application cache directory."""
+    if not APP_CACHE_BASE_DIR.exists():
+        logging.info(f"No cache directory exists. This directory is created only by some download functions.")
+        return None
+    else:
+        logging.info(f"Cache directory located at: {APP_CACHE_BASE_DIR}.")
+        return APP_CACHE_BASE_DIR

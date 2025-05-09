@@ -49,4 +49,7 @@ def _load_file_from_zenodo_with_caching(
                 f_cache.write(download.content)
                 file = path_cached_file
 
-    return file
+    return {
+        "path_cached_file": path_cached_file,
+        "path_dir_cache": path_dir_cache
+    }

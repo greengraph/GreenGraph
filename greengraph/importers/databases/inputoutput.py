@@ -1,14 +1,13 @@
 # %%
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
-import requests
-import zipfile
 from pathlib import Path
-from io import BytesIO
-from greengraph.utility.logging import logtimer
-import logging
+import zipfile
+
 from greengraph import APP_CACHE_BASE_DIR
 from greengraph.utility.download import _load_file_from_zenodo_with_caching
+from greengraph.utility.logging import logtimer
+
 
 class useeio:
     """
@@ -189,7 +188,7 @@ class useeio:
             df_A_metadata = df_A_metadata[columns_sector_metadata.values()]
             df_A_metadata['unit'] = 'USD'
 
-            df_A_annual_production = df_A_annual_production.rename(columns={'x': 'annual_production'})
+            df_A_annual_production = df_A_annual_production.rename(columns={'x': 'annual production'})
             df_A_metadata = pd.merge(
                 left=df_A_metadata,
                 right=df_A_annual_production,
@@ -250,7 +249,6 @@ class exiobase:
         """
         return list(exiobase._available_versions.keys())
     
-    @staticmethod
     def load_exiobase_data_from_zenodo(
         version: str,
         type: str,
@@ -293,17 +291,26 @@ class exiobase:
         if type not in ['ixi', 'pxp']:
             raise ValueError("type must be either 'ixi' or 'pxp'")
 
-        file = _load_file_from_zenodo_with_caching(
+        dict_paths_download = _load_file_from_zenodo_with_caching(
             name_file=f"IOT_{year}_{type}.zip",
             name_dir_cache="useeio",
             zenodo_record=exiobase._available_versions[version]['zenodo_record'],
         )
 
         with logtimer(f"extracting Exiobase data from zip file."):
-            with zipfile.ZipFile(BytesIO(file.content), 'r') as zip:
-                    file_A = zip.extract(f"IOT_{year}_{type}/A.txt")
-                    file_S = zip.extract(f"IOT_{year}_{type}/satellite/S.txt")
-                    file_S_metadata = zip.extract(f"IOT_{year}_{type}/satellite/unit.txt")
+            with zipfile.ZipFile(dict_paths_download['path_cached_file'], 'r') as zip:
+                    file_A = zip.extract(
+                        member=f"IOT_{year}_{type}/A.txt",
+                        path=dict_paths_download['path_dir_cache']
+                    )
+                    file_S = zip.extract(
+                        member=f"IOT_{year}_{type}/satellite/S.txt",
+                        path=dict_paths_download['path_dir_cache']
+                    )
+                    file_S_metadata = zip.extract(
+                        member=f"IOT_{year}_{type}/satellite/unit.txt",
+                        path=dict_paths_download['path_dir_cache']
+                    )
         
         return exiobase.format_exiobase_matrices(
             path_A=Path(file_A),
