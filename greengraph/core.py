@@ -8,11 +8,13 @@ from datetime import datetime
 import uuid
 from operator import itemgetter
 
+
 from greengraph.math.matrix import (
     calculate_production_vector,
     calculate_inventory_vector,
     calculate_impact_vector
 )
+
 
 class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     r"""
@@ -175,6 +177,7 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         else:
             return list_of_nodes[0] if data else list_of_nodes[0][0]
 
+
 class GreenGraphMatrixContainer():
     """
     GreenGraph class to manage matrices (technosphere, biosphere, characterization, etc.) generated from the graph.
@@ -206,25 +209,11 @@ class GreenGraphMatrixContainer():
             'created': datetime.now(),
         }
 
+
     def lca(
         self,
         demand: dict[str, float],
     ) -> xr.DataArray:
-        r"""
-        Computes the life cycle assessment (LCA) of the graph.
-
-        $$
-        \mathbf{h} = \mathbf{Q} \cdot (\mathbf{I} - \mathbf{A})^{-1} \cdot \mathbf{f}
-        $$
-
-        Warnings
-        --------
-        Note that the production vector is computed using the $(\mathbf{I-A})^{-1}$ convention
-
-        References
-        ----------
-        heijungs and Suh
-        """
         x = calculate_production_vector(
             A=self.matrices['A'],
             demand=demand
@@ -233,8 +222,36 @@ class GreenGraphMatrixContainer():
             x=x,
             B=self.matrices['B']
         )
+        return g
+
+
+    def lcia(
+        self,
+        g: xr.DataArray,
+    ) -> xr.DataArray:
+        r"""
+        Computes the life cycle assessment (LCA) of the graph.
+
+        $$
+        \mathbf{h} = \mathbf{Q} \cdot (\mathbf{I} - \mathbf{A})^{-1} \cdot \mathbf{f}
+        $$
+
+        Notes
+        -----
+        This function can be called directly. 
+        There is no need to call the [`greengraph.core.GreenGraphMatrixContainer.lca`][] function first.
+
+        Warnings
+        --------
+        Note that the production vector is computed using the $(\mathbf{I-A})^{-1}$ convention
+
+        References
+        ----------
+        
+        """
+        
         h = calculate_impact_vector(
-            x=x,
+            g=g,
             Q=self.matrices['Q']
         )
         return h
