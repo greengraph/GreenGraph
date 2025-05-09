@@ -25,7 +25,6 @@ nav:
     - Import:
       - Databases:
         - Generic: 'api/importers/databases/generic.md'
-        - Ecoinvent: 'api/importers/databases/ecoinvent.md'
         - InputOutput: 'api/importers/databases/inputoutput.md'
       - Charactization Methods:
         - Generic: 'api/importers/characterization/generic.md'

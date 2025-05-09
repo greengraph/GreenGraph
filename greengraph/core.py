@@ -15,6 +15,9 @@ from greengraph.math.matrix import (
     calculate_impact_vector
 )
 
+LIST_REQUIRED_NODE_ATTRIBUTES = [
+    'type',
+]
 
 class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     r"""
@@ -123,45 +126,105 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     ) -> None:
         super().__init__(graph, **attr)
 
-    def _validate_node_attributes(
+
+    def _validate_new_node_attributes(
         self,
         node,
         attr
+    ):
+        """
+        Validates that if a node is new, the attributes provided in the current
+        call contain all REQUIRED_NODE_ATTRIBUTES.
+        This is called before the node is actually added by the superclass method.
+        """
+        if node not in self:
+            list_missing_attrs = [
+                required_attr for required_attr in LIST_REQUIRED_NODE_ATTRIBUTES
+                if required_attr not in attr
+            ]
+            if list_missing_attrs:
+                raise ValueError(f"New node '{node}' must be supplied with all required attributes.")
+
+
+    def add_node(
+        self,
+        node_for_adding,
+        **attr
     ) -> None:
         """
-        Checks if the node 'node_id' will possess the required 'name' and 'type'
-        attributes after applying the 'attrs_of_current_call'.
-        Raises ValueError if the validation fails.
+        Adds a single node. 
+        If the node is new, attributes provided in `**attr` must include all
+        REQUIRED_NODE_ATTRIBUTES.
+        If the node already exists, its attributes are updated with `**attr`.
+        It's assumed existing nodes already meet requirements for their original
+        required attributes, and this update won't be re-checked for that original set.
         """
-        # Determine what the node's attributes would be after the current operation.
-        # Start with existing attributes if the node is already in the graph.
-        final_attrs = {}
-        if node_id in self:  # Check if node already exists
-            final_attrs.update(self.nodes[node_id])
-        
-        # Then, apply the attributes from the current call (these would override existing ones)
-        final_attrs.update(attrs_of_current_call)
+        self._validate_new_node_attributes(node_for_adding, attr)
+        super().add_node(node_for_adding, **attr)
+    
+    def add_nodes_from(
+        self,
+        nodes_for_adding,
+        **attr
+    ) -> None:
+        """
+        Adds multiple nodes.
+        For any node in `nodes_for_adding` that is new to the graph, 
+        its attributes (from tuple or global **attr) must include all
+        REQUIRED_NODE_ATTRIBUTES.
+        If a node already exists, its attributes are updated. It's assumed
+        existing nodes already meet requirements.
+        """
+        for node_entry in nodes_for_adding:
+            """
+            nodes_for_adding can be a list of tuples,
+            where the first element is the node
+            and the second element is a dictionary of attributes:
 
-        # Perform the validation
-        if 'name' not in final_attrs:
-            raise ValueError(
-                f"Node '{node_id}' must have a 'name' attribute. "
-                f"Attempted operation with attributes for this call: {attrs_of_current_call}. "
-                f"Resulting attributes would lack 'name'."
-            )
-        if 'type' not in final_attrs:
-            raise ValueError(
-                f"Node '{node_id}' must have a 'type' attribute. "
-                f"Attempted operation with attributes for this call: {attrs_of_current_call}. "
-                f"Resulting attributes would lack 'type'."
-            )
-        
-        # Optional: Add type checks for the attribute values themselves
-        # For example, if 'name' must be a string:
-        # if not isinstance(final_attrs['name'], str):
-        #     raise TypeError(f"Attribute 'name' for node '{node_id}' must be a string.")
-        # if not isinstance(final_attrs['type'], str): # Or a specific enum/type
-        #     raise TypeError(f"Attribute 'type' for node '{node_id}' must be a string (or other expected type).")
+            [
+                (
+                    node_id,
+                    {attr1: value1, attr2: value2}
+                ),
+            ]
+
+            nodes_for_adding can also be a list-like object of nodes, 
+            with attributes that are the same for all these nodes
+            passed in the global **attr:
+
+            [
+                node_id,
+                node_id,
+                ...
+            ]
+            """
+            if (
+                isinstance(node_entry, tuple) and
+                isinstance(node_entry[1], dict)
+            ):
+                self._validate_new_node_attributes(
+                    node=node_entry[0],
+                    attr=node_entry[1]
+                )
+            else:
+                self._validate_new_node_attributes(
+                    node=node_entry,
+                    attr=attr
+                )
+
+        super().add_nodes_from(nodes_for_adding, **attr)
+
+    
+
+    #### how to to use 'add_edges_from' with a dict:
+    edges = [
+        (
+            str(row), str(col), {amount_attribute: float(val), **dict_attributes})
+            for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values
+        )
+    ]
+
+    G.add_edges_from(edges)
 
 
     def get_node_by_attributes(
@@ -181,6 +244,13 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
             | keys           | values         |
             |----------------|----------------|
             | node attribute | expected value |
+
+        Notes
+        -----
+        This is a utility function. Nodes can also be filtered using a list comprehension:
+        ```python
+        [node for node, attrs in G.nodes(data=True) if all(key in attrs and attrs[key] == value for key, value in dict_conditions.items())]
+        ```    
 
         Example
         --------
