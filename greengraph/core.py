@@ -131,9 +131,14 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         'extension': ('production', 'unit'),
         'indicator': ('unit'),
     }
-    TUPLE_REQUIRED_EDGE_ATTRIBUTES = (
-        'type',
-    )
+
+    # TUPLE_REQUIRED_EDGE_ATTRIBUTES = (
+    #     'type',
+    # )
+    # DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE = {
+    #     'flow': ('amount'),
+    #     'concordance': (),
+    # }
 
     def _validate_new_node_attributes(
         self,
@@ -145,15 +150,20 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         call contain all REQUIRED_NODE_ATTRIBUTES.
         This is called before the node is actually added by the superclass method.
         """
-        list_required_attrs_complete = self.TUPLE_REQUIRED_NODE_ATTRIBUTES + self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(attr['type'], None)
-        if node not in self:
-            list_missing_attrs = [
-                required_attr for required_attr in list_required_attrs_complete
-                if required_attr not in attr
-            ]
-            if list_missing_attrs:
-                raise ValueError(f"New node '{node}' must be supplied with all required attributes.")                
-
+        # Will need to be added once NetworkX function has been updated:
+        # https://github.com/networkx/networkx/pull/8037
+        # 
+        # if attr is None:
+        #     raise ValueError(f"New node '{node}' must be supplied with all required attributes.")
+        # list_required_attrs_complete = self.TUPLE_REQUIRED_NODE_ATTRIBUTES + self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(attr['type'], None)
+        # if node not in self:
+        #     list_missing_attrs = [
+        #         required_attr for required_attr in list_required_attrs_complete
+        #         if required_attr not in attr
+        #     ]
+        #     if list_missing_attrs:
+        #         raise ValueError(f"New node must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
+        pass
 
     def _validate_new_edge_attributes(
         self,
@@ -161,11 +171,19 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     ) -> None:
         """
         """
-        if attr is None:
-            raise ValueError("New edges must be supplied with all required attributes.")
-        for required_attr in self.TUPLE_REQUIRED_EDGE_ATTRIBUTES:
-            if required_attr not in attr:
-                raise ValueError(f"New edges must be supplied with all required attributes: {required_attr}")
+        # Will need to be added once NetworkX function has been updated:
+        # https://github.com/networkx/networkx/pull/8037
+        # 
+        # if attr is None:
+        #     raise ValueError("New edges must be supplied with all required attributes.")
+        # list_required_attrs_complete = self.TUPLE_REQUIRED_EDGE_ATTRIBUTES + self.DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE.get(attr['type'], None)
+        # list_missing_attrs = [
+        #         required_attr for required_attr in list_required_attrs_complete
+        #         if required_attr not in attr
+        #     ]
+        # if list_missing_attrs:
+        #     raise ValueError(f"New edge must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
+        pass
 
     def add_node(
         self,
@@ -293,12 +311,13 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
             """
             if (
                 isinstance(edge_entry, tuple) and
-                isinstance(edge_entry[3], dict)
+                len(edge_entry) == 3 and
+                isinstance(edge_entry[2], dict)
             ):
-                dict_all_attributes.update(edge_entry[3])
-                self._validate_new_node_attributes(attr=dict_all_attributes)
+                dict_all_attributes.update(edge_entry[2])
+                self._validate_new_edge_attributes(attr=dict_all_attributes)
             else:
-                self._validate_new_node_attributes(attr=dict_all_attributes)
+                self._validate_new_edge_attributes(attr=dict_all_attributes)
 
         self._validate_new_edge_attributes(**attr)
         return super().add_edges_from(ebunch_to_add, **attr)

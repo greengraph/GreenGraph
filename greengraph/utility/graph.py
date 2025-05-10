@@ -9,7 +9,7 @@ def from_biadjacency_matrix(
     attributes_nodes_axis_1: dict,
     amount_attribute: str,
     dict_attributes: dict,
-    create_using: type = nx.MultiDiGraph,
+    create_using: type,
 ) -> nx.MultiDiGraph:
     """
     Given a biadjacency matrix, two lists of nodes
