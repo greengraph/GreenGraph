@@ -24,5 +24,14 @@ nodelist_simple = [node for node, attrs in nodelist]
 custom_graph = nx.from_numpy_array(
     data,
     nodelist=nodelist_simple,
-    create_using=GreenGraphMultiDiGraph,
+    create_using=nx.MultiDiGraph,
 )
+
+
+G = GreenGraphMultiDiGraph()
+G.add_nodes_from(nodelist)
+
+GG = nx.from_numpy_array(A, nodelist=nodelist_simple, create_using=nx.MultiDiGraph)
+# G.update(edges=GG.edges(data=True),nodes=None)
+
+G.add_edges_from(GG.edges(data=True))

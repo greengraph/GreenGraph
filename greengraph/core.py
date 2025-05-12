@@ -123,67 +123,68 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
     ) -> None:
         super().__init__(graph, **attr)
 
-    TUPLE_REQUIRED_NODE_ATTRIBUTES = (
+    LIST_REQUIRED_NODE_ATTRIBUTES = [
         'type',
-    )
+    ]
     DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE = {
-        'production': ('production', 'unit'),
-        'extension': ('production', 'unit'),
-        'indicator': ('unit'),
+        'production': ['production', 'unit'],
+        'extension': ['production', 'unit'],
+        'indicator': ['unit'],
     }
 
-    # TUPLE_REQUIRED_EDGE_ATTRIBUTES = (
-    #     'type',
-    # )
-    # DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE = {
-    #     'flow': ('amount'),
-    #     'concordance': (),
-    # }
+    DICT_REQUIRED_EDGE_ATTRIBUTES = {
+        'type': {
+            'flow': ['amount'],
+            'concordance': [],
+            'characterization': ['weight']
+        }
+    }
+
+    def _validate_new_edge_attributes(
+        self,
+        dict_attr
+    ) -> None:
+        """
+        """
+        if dict_attr is None:
+            raise ValueError("New edges must be supplied with all required attributes.")
+        for attr_toplevel in self.DICT_REQUIRED_EDGE_ATTRIBUTES:
+            if attr_toplevel not in dict_attr:
+                raise ValueError(f"New edge must be supplied with attribute '{attr_toplevel}'")
+            else:
+                list_attr_secondlevel = self.DICT_REQUIRED_EDGE_ATTRIBUTES[attr_toplevel][dict_attr[attr_toplevel]]
+                if list_attr_secondlevel is None:
+                    pass
+                else:
+                    for attr_secondlevel in list_attr_secondlevel:
+                        if attr_secondlevel not in dict_attr:
+                            raise ValueError(f"New edge must be supplied with attribute '{attr_secondlevel}'")
 
     def _validate_new_node_attributes(
         self,
         node,
-        attr
+        dict_attr
     ) -> None:
         """
         Validates that if a node is new, the attributes provided in the current
         call contain all REQUIRED_NODE_ATTRIBUTES.
         This is called before the node is actually added by the superclass method.
         """
-        # Will need to be added once NetworkX function has been updated:
-        # https://github.com/networkx/networkx/pull/8037
-        # 
-        # if attr is None:
-        #     raise ValueError(f"New node '{node}' must be supplied with all required attributes.")
-        # list_required_attrs_complete = self.TUPLE_REQUIRED_NODE_ATTRIBUTES + self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(attr['type'], None)
-        # if node not in self:
-        #     list_missing_attrs = [
-        #         required_attr for required_attr in list_required_attrs_complete
-        #         if required_attr not in attr
-        #     ]
-        #     if list_missing_attrs:
-        #         raise ValueError(f"New node must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
-        pass
+        if dict_attr is None:
+            raise ValueError(f"New node '{node}' must be supplied with all required attributes.")
+        
+        list_required_attrs_complete = self.LIST_REQUIRED_NODE_ATTRIBUTES + list(self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], None))
+        if node not in self:
+            list_missing_attrs = [
+                required_attr for required_attr in list_required_attrs_complete
+                if required_attr not in dict_attr
+            ]
+            if list_missing_attrs:
+                raise ValueError(f"New node must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
+        else:
+            pass
 
-    def _validate_new_edge_attributes(
-        self,
-        **attr
-    ) -> None:
-        """
-        """
-        # Will need to be added once NetworkX function has been updated:
-        # https://github.com/networkx/networkx/pull/8037
-        # 
-        # if attr is None:
-        #     raise ValueError("New edges must be supplied with all required attributes.")
-        # list_required_attrs_complete = self.TUPLE_REQUIRED_EDGE_ATTRIBUTES + self.DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE.get(attr['type'], None)
-        # list_missing_attrs = [
-        #         required_attr for required_attr in list_required_attrs_complete
-        #         if required_attr not in attr
-        #     ]
-        # if list_missing_attrs:
-        #     raise ValueError(f"New edge must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
-        pass
+    
 
     def add_node(
         self,
@@ -246,12 +247,12 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
                 dict_all_attributes.update(node_entry[1])
                 self._validate_new_node_attributes(
                     node=node_entry[0],
-                    attr=dict_all_attributes
+                    dict_attr=dict_all_attributes
                 )
             else:
                 self._validate_new_node_attributes(
                     node=node_entry,
-                    attr=dict_all_attributes
+                    dict_attr=dict_all_attributes
                 )
 
         super().add_nodes_from(nodes_for_adding, **attr)
@@ -262,65 +263,65 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         self,
         u_for_edge,
         v_for_edge,
+        key,
+        dict_attr,
         **attr
     ) -> None:
         """
+        Warnings
+        --------
+        This method accepts a dictionary of edge attributes `dict_attr`
+        that will be added to the edge attributes.
+        The [`networkx.MultiDiGraph.add_edge`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edge.html#networkx.MultiDiGraph.add_edge)
+        method does not accept this parameter.
+
+        Notes
+        -----
+        Attributes in `dict_attr` take precedence (=overwrite)
+        those passed as keywords `**attr`.
+
         See Also
         --------
         [`networkx.MultiDiGraph.add_edge`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edge.html#networkx.MultiDiGraph.add_edge)
         """
-        self._validate_new_edge_attributes(**attr)
-        return super().add_edge(u_for_edge, v_for_edge, **attr)
-
+        dict_attr_combined = {**attr, **(dict_attr or {})}
+        self._validate_new_edge_attributes(dict_attr=dict_attr_combined)
+        key = super().add_edge(u_for_edge, v_for_edge, key)
+        self[u_for_edge][v_for_edge][key].update(dict_attr_combined)
+        return key
     
     def add_edges_from(self, ebunch_to_add, **attr) -> None:
         """
         Warnings
         --------
-
+        Beware of bananas.
 
         See Also
         --------
         [`networkx.MultiDiGraph.add_edges_from`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edges_from.html#networkx.MultiDiGraph.add_edges_from)
         """
-
-        dict_all_attributes = {}
-        dict_all_attributes.update(attr)
-        for edge_entry in ebunch_to_add:
-            """
-            ebunch_to_add can be a list of tuples,
-            where the first two element are source and target nodes
-            and the third element is a dictionary of edge attributes:
-
-            [
-                (
-                    source_node_id, target_node_id,
-                    {attr1: value1, attr2: value2}
-                ),
-            ]
-
-            nodes_for_adding can also be a list-like object of nodes, 
-            with attributes that are the same for all these nodes
-            passed in the global **attr:
-
-            [
-                node_id,
-                node_id,
-                ...
-            ]
-            """
-            if (
-                isinstance(edge_entry, tuple) and
-                len(edge_entry) == 3 and
-                isinstance(edge_entry[2], dict)
-            ):
-                dict_all_attributes.update(edge_entry[2])
-                self._validate_new_edge_attributes(attr=dict_all_attributes)
+        list_keys = []
+        for e in ebunch_to_add:
+            if len(e) == 2:
+                u, v = e
+                dict_attr = None
+                key = None
+            elif len(e) == 3:
+                u, v, third = e
+                if isinstance(third, dict):
+                    dict_attr = third
+                    key = None
+                else:
+                    dict_attr = None
+                    key = third
+            elif len(e) == 4:
+                u, v, key, dict_attr = e
             else:
-                self._validate_new_edge_attributes(attr=dict_all_attributes)
-
-        self._validate_new_edge_attributes(**attr)
-        return super().add_edges_from(ebunch_to_add, **attr)
+                raise nx.NetworkXError(f"Edge tuple {e} must be a 2-tuple, 3-tuple or 4-tuple.")
+            key = self.add_edge(u, v, dict_attr=dict_attr, key=key, **attr)
+            list_keys.append(key)
+        nx._clear_cache(self)
+        return list_keys
 
 
     def get_node_by_attributes(

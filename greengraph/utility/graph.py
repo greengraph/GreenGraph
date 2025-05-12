@@ -1,14 +1,18 @@
+# %%
+from collections.abc import Iterable
+from typing import Any
 import networkx as nx
 import numpy as np
+from greengraph.utility.logging import logtimer
 
-def from_biadjacency_matrix(
+def graph_from_matrix(
     matrix: np.ndarray,
-    nodes_axis_0: list | np.ndarray,
-    nodes_axis_1: list | np.ndarray,
-    attributes_nodes_axis_0: dict,
-    attributes_nodes_axis_1: dict,
-    amount_attribute: str,
-    dict_attributes: dict,
+    nodes_axis_0: Iterable[Any | tuple[Any, dict[str, Any]]],
+    nodes_axis_1: Iterable[Any | tuple[Any, dict[str, Any]]],
+    common_attributes_nodes_axis_0: dict,
+    common_attributes_nodes_axis_1: dict,
+    name_amount_attribute: str,
+    common_attributes_edges: dict,
     create_using: type,
 ) -> nx.MultiDiGraph:
     """
@@ -23,8 +27,8 @@ def from_biadjacency_matrix(
     ...     matrix=B,
     ...     nodes_axis_0=[1, 2, 3],
     ...     nodes_axis_1=[A, B, C],
-    ...     attributes_nodes_axis_0={"type": "process"},
-    ...     attributes_nodes_axis_1={"type": "sector"},
+    ...     common_attributes_nodes_axis_0={"type": "process"},
+    ...     common_attributes_nodes_axis_1={"type": "sector"},
     ...     create_using=nx.MultiDiGraph,
     ... )
     ```
@@ -46,9 +50,9 @@ def from_biadjacency_matrix(
         A list or array of nodes corresponding to the rows of the matrix.
     nodes_axis_1 : list | np.ndarray
         A list or array of nodes corresponding to the columns of the matrix.
-    attributes_nodes_axis_0 : dict
+    common_attributes_nodes_axis_0 : dict
         A dictionary of attributes to be applied to all nodes in axis 0.
-    attributes_nodes_axis_1 : dict
+    common_attributes_nodes_axis_1 : dict
         A dictionary of attributes to be applied to all nodes in axis 1.
     create_using : type, optional
         The type of graph to create. Default is `nx.MultiDiGraph`.
@@ -60,17 +64,25 @@ def from_biadjacency_matrix(
         A bipartite graph created from the biadjacency matrix.
     """
     G = nx.empty_graph(n=0, create_using=create_using)
-    G.add_nodes_from(nodes_axis_0, **attributes_nodes_axis_0)
-    G.add_nodes_from(nodes_axis_1, **attributes_nodes_axis_1)
 
-    row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-    row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
-    col_labels_nonzero = np.array(nodes_axis_1)[col_indices_nonzero]
+    if nodes_axis_1 is not None and common_attributes_nodes_axis_1 is not None:
+        with logtimer('creating graph from bi-adjacency matrix (different row/column labels).'):
+            G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
+            G.add_nodes_from(nodes_axis_1, **(common_attributes_nodes_axis_1 or {}))
+            row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
+            row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
+            col_labels_nonzero = np.array(nodes_axis_1)[col_indices_nonzero]
+    else:
+        with logtimer('creating graph from adjacency matrix (same row/column labels).'):
+            G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
+            row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
+            row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
+            col_labels_nonzero = np.array(nodes_axis_0)[col_indices_nonzero]
     
     values = matrix[row_indices_nonzero, col_indices_nonzero]
     edges = [
         (
-            str(row), str(col), {amount_attribute: float(val), **dict_attributes})
+            str(row), str(col), {name_amount_attribute: float(val), **(common_attributes_edges or {})})
             for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values
         )
     ]
@@ -78,3 +90,31 @@ def from_biadjacency_matrix(
     G.add_edges_from(edges)
 
     return G
+
+
+from greengraph.core import GreenGraphMultiDiGraph
+import numpy as np
+import networkx as nx
+
+data = np.array([
+    [0, 1, 0],
+    [1, 0, 5],
+    [0, 0, 0]
+])
+
+nodelist = (
+    ('N1', {'type': 'production', 'unit': 'kg', 'production': 1.0}),
+    ('N2', {'type': 'production', 'unit': 'kg', 'production': 1.0}),
+    ('N3', {'type': 'production', 'unit': 'kg', 'production': 1.0})
+)
+
+G = graph_from_matrix(
+    matrix=data,
+    nodes_axis_0=nodelist,
+    nodes_axis_1=None,
+    common_attributes_nodes_axis_0=None,
+    common_attributes_nodes_axis_1=None,
+    name_amount_attribute='amount',
+    common_attributes_edges={'type': 'flow'},
+    create_using=GreenGraphMultiDiGraph,
+)
