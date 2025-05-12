@@ -132,12 +132,13 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         'indicator': ['unit'],
     }
 
-    DICT_REQUIRED_EDGE_ATTRIBUTES = {
-        'type': {
-            'flow': ['amount'],
-            'concordance': [],
-            'characterization': ['weight']
-        }
+    LIST_REQUIRED_EDGE_ATTRIBUTES = [
+        'type',
+    ]
+    DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE = {
+        'flow': ['amount'],
+        'concordance': [],
+        'characterization': ['weight']
     }
 
     def _validate_new_edge_attributes(
@@ -147,18 +148,19 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         """
         """
         if dict_attr is None:
-            raise ValueError("New edges must be supplied with all required attributes.")
-        for attr_toplevel in self.DICT_REQUIRED_EDGE_ATTRIBUTES:
-            if attr_toplevel not in dict_attr:
-                raise ValueError(f"New edge must be supplied with attribute '{attr_toplevel}'")
-            else:
-                list_attr_secondlevel = self.DICT_REQUIRED_EDGE_ATTRIBUTES[attr_toplevel][dict_attr[attr_toplevel]]
-                if list_attr_secondlevel is None:
-                    pass
-                else:
-                    for attr_secondlevel in list_attr_secondlevel:
-                        if attr_secondlevel not in dict_attr:
-                            raise ValueError(f"New edge must be supplied with attribute '{attr_secondlevel}'")
+            raise ValueError("New edge must be supplied with required attributes. No attributes were provided.")
+
+        list_required_attrs_complete = list(
+            self.LIST_REQUIRED_EDGE_ATTRIBUTES +
+            self.DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], [])
+        )
+        list_missing_attrs = [
+            required_attr for required_attr in list_required_attrs_complete
+            if required_attr not in dict_attr
+        ]
+        if list_missing_attrs:
+            raise ValueError(f"New edge must be supplied with required attributes. Missing attributes: {list_missing_attrs}")
+
 
     def _validate_new_node_attributes(
         self,
@@ -171,19 +173,19 @@ class GreenGraphMultiDiGraph(nx.MultiDiGraph):
         This is called before the node is actually added by the superclass method.
         """
         if dict_attr is None:
-            raise ValueError(f"New node '{node}' must be supplied with all required attributes.")
+            raise ValueError(f"New node must be supplied with required attributes. No attributes were provided.")
         
-        list_required_attrs_complete = self.LIST_REQUIRED_NODE_ATTRIBUTES + list(self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], None))
+        list_required_attrs_complete = list(
+            self.LIST_REQUIRED_NODE_ATTRIBUTES +
+            self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], [])
+        )
         if node not in self:
             list_missing_attrs = [
                 required_attr for required_attr in list_required_attrs_complete
                 if required_attr not in dict_attr
             ]
             if list_missing_attrs:
-                raise ValueError(f"New node must be supplied with all required attributes. Missing attributes: {list_missing_attrs}")
-        else:
-            pass
-
+                raise ValueError(f"New node must be supplied with required attributes. Missing attributes: {list_missing_attrs}")
     
 
     def add_node(
