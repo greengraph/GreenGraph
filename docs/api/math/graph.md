@@ -1,1 +1,0 @@
-::: greengraph.math.graph

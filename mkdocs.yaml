@@ -8,29 +8,30 @@ nav:
   - Related Projects: 'related.md'
   - Theory:
     - Notation and Diagrams: 'theory/notation.md'
-    - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
-    - Hybrid Matrix Calculations: 'theory/calculations.md'
+  #  - Hybrid Life-Cycle Assessment: 'theory/hlca.md'
+  #  - Hybrid Matrix Calculations: 'theory/calculations.md'
   - Architecture:
     - Overview: 'architecture/overview.md'
   - Practice:
-    - Getting Started: 'practive/gettingstarted.md'
+    - Getting Started: 'practice/gettingstarted.md'
     - Working with the Graph: 'practice/graph.md'
   - API Reference:
+    - GreenGraph: 'api/greengraph.md'
   #  - Concordance: 'api/concordance.md'
   #  - Characterization: 'api/characterization.md'
-    - Core: 'api/core.md'
-    - Math: 
-      - Matrix: 'api/math/matrix.md'
-      - Graph: 'api/math/graph.md'
-    - Import:
-      - Databases:
-        - Generic: 'api/importers/databases/generic.md'
-        - InputOutput: 'api/importers/databases/inputoutput.md'
-      - Charactization Methods:
-        - Generic: 'api/importers/characterization/generic.md'
-        - IMPACT World +: 'api/importers/characterization/iwp.md'
-    - Utility:
-      - Graph: 'api/utility/graph.md'
+  #  - Core: 'api/core.md'
+  #  - Math: 
+  #    - Matrix: 'api/math/matrix.md'
+  #    - Graph: 'api/math/graph.md'
+  #  - Import:
+  #    - Databases:
+  #      - Generic: 'api/importers/databases/generic.md'
+  #      - InputOutput: 'api/importers/databases/inputoutput.md'
+  #    - Charactization Methods:
+  #      - Generic: 'api/importers/characterization/generic.md'
+  #      - IMPACT World +: 'api/importers/characterization/iwp.md'
+  #  - Utility:
+  #    - Graph: 'api/utility/graph.md'
 theme: # https://www.mkdocs.org/user-guide/choosing-your-theme/#readthedocs
   name: material
   custom_dir: docs/_overrides
