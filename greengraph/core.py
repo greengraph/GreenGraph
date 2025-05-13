@@ -1,3 +1,4 @@
+# %%
 r"""
 This module contains the classes containing the graph and matrix representations of the supply chain data.
 """
@@ -5,6 +6,7 @@ This module contains the classes containing the graph and matrix representations
 from datetime import datetime
 import networkx as nx
 import xarray as xr
+import importlib.metadata
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -136,84 +138,79 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         graph: nx.MultiDiGraph = None,
         **attr
     ) -> None:
+        r"""
+        https://networkx.org/documentation/stable/tutorial.html#adding-attributes-to-graphs-nodes-and-edges
+        """
         super().__init__(graph, **attr)
-
-    LIST_REQUIRED_NODE_ATTRIBUTES = [
-        'type',
-    ]
-    DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE = {
-        'production': ['production', 'unit'],
-        'extension': ['production', 'unit'],
-        'indicator': ['unit'],
-    }
-
-    LIST_REQUIRED_EDGE_ATTRIBUTES = [
-        'type',
-    ]
-    DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE = {
-        'flow': ['amount'],
-        'concordance': [],
-        'characterization': ['weight']
-    }
-
-    @staticmethod
-    def list_required_node_attributes(type) -> list:
-        """
-        Returns a list of required node attributes.
-        """
-        list_required_attrs_complete = list(
-            GreenMultiDiGraph.LIST_REQUIRED_NODE_ATTRIBUTES +
-            GreenMultiDiGraph.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(type, [])
-        )
-        return list_required_attrs_complete
+        self.graph['greengraph'] = importlib.metadata.version('greengraph')
     
-
-    def _validate_new_edge_attributes(
-        self,
-        dict_attr
-    ) -> None:
-        """
-        """
-        if dict_attr is None:
-            raise ValueError("New edge must be supplied with required attributes. No attributes were provided.")
-
-        list_required_attrs_complete = list(
-            self.LIST_REQUIRED_EDGE_ATTRIBUTES +
-            self.DICT_REQUIRED_EDGE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], [])
-        )
-        list_missing_attrs = [
-            required_attr for required_attr in list_required_attrs_complete
-            if required_attr not in dict_attr
-        ]
-        if list_missing_attrs:
-            raise ValueError(f"New edge must be supplied with required attributes. Missing attributes: {list_missing_attrs}")
-
-
-    def _validate_new_node_attributes(
+    def _validate_node_attributes(
         self,
         node,
+        dict_attr,
+    ) -> None:
+        r"""
+        """
+
+        dict_required_attributes = {
+            'production': {'production', 'unit'},
+            'extension': {'production', 'unit'},
+            'indicator': {'unit'},
+        }
+
+        if node is not None and node in self:
+            return
+        if dict_attr is None:
+            raise ValueError(f"Node must be supplied with required attributes. No attributes were provided.")
+        
+        if 'type' not in dict_attr:
+            raise ValueError("Node must have a 'type' attribute. No type was provided.")
+        
+        node_type = dict_attr['type']
+
+        if node_type not in dict_required_attributes.keys():
+            valid_types = "', '".join(dict_required_attributes.keys())
+            raise ValueError(f"Invalid node type: '{node_type}'. Valid types are: '{valid_types}'.")
+
+        set_required_attributes = dict_required_attributes[node_type]
+        set_provided_attributes = set(dict_attr.keys())
+        set_missing_attributes = set_required_attributes - set_provided_attributes
+
+        if set_missing_attributes:
+            raise ValueError(f"Node is missing required attributes: {set_missing_attributes}.")
+        
+    def _validate_edge_attributes(
+        self,
         dict_attr
     ) -> None:
+        r"""
         """
-        Validates that if a node is new, the attributes provided in the current
-        call contain all REQUIRED_NODE_ATTRIBUTES.
-        This is called before the node is actually added by the superclass method.
-        """
+
+        dict_required_attributes = {
+            'flow': {'weight', 'unit'},
+            'concordance': {},
+            'characterization': {'weight', 'unit'},
+        }
+
         if dict_attr is None:
-            raise ValueError(f"New node must be supplied with required attributes. No attributes were provided.")
+            raise ValueError(f"Edge must be supplied with required attributes. No attributes were provided.")
         
-        list_required_attrs_complete = list(
-            self.LIST_REQUIRED_NODE_ATTRIBUTES +
-            self.DICT_REQUIRED_NODE_ATTRIBUTES_BY_TYPE.get(dict_attr['type'], [])
-        )
-        if node not in self:
-            list_missing_attrs = [
-                required_attr for required_attr in list_required_attrs_complete
-                if required_attr not in dict_attr
-            ]
-            if list_missing_attrs:
-                raise ValueError(f"New node must be supplied with required attributes. Missing attributes: {list_missing_attrs}")
-    
+        if 'type' not in dict_required_attributes:
+            raise ValueError("Edge must have a 'type' attribute. No type was provided.")
+        
+        edge_type = dict_attr['type']
+
+        if edge_type not in dict_required_attributes.keys():
+            valid_types = "', '".join(dict_required_attributes.keys())
+            raise ValueError(f"Invalid edge type: '{edge_type}'. Valid types are: '{valid_types}'.")
+
+        set_required_attributes = dict_required_attributes[edge_type]
+        set_provided_attributes = set(dict_attr.keys())
+        set_missing_attributes = set_required_attributes - set_provided_attributes
+
+        if set_missing_attributes:
+            raise ValueError(f"Node is missing required attributes: {set_missing_attributes}.")
+
 
     def add_node(
         self,
