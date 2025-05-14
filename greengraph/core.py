@@ -7,6 +7,7 @@ from datetime import datetime
 import networkx as nx
 import xarray as xr
 import importlib.metadata
+import random
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -114,10 +115,11 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     """
     def __init__(
         self,
-        graph: nx.MultiDiGraph = None,
+        incoming_graph_data=None,
+        multigraph_input=None,
         **attr
     ) -> None:
-        super().__init__(graph, **attr)
+        super().__init__(incoming_graph_data, multigraph_input, **attr)
         self.graph['greengraph'] = importlib.metadata.version('greengraph') # https://networkx.org/documentation/stable/tutorial.html#adding-attributes-to-graphs-nodes-and-edges
     
     def _validate_node_attributes(
@@ -277,7 +279,6 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
         super().add_nodes_from(nodes_for_adding, **attr)
 
-
     
     def add_edge(
         self,
@@ -435,7 +436,6 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         return random.choice(list(self.nodes()))
     
 
-    
 
 class GreenMatrixContainer():
     """
