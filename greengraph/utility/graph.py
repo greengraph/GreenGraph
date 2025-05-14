@@ -91,8 +91,9 @@ def graph_from_matrix(
 
     return G
 
+# %%
 
-from greengraph.core import GreenGraphMultiDiGraph
+from greengraph.core import GreenMultiDiGraph
 import numpy as np
 import networkx as nx
 
@@ -115,6 +116,7 @@ G = graph_from_matrix(
     common_attributes_nodes_axis_0=None,
     common_attributes_nodes_axis_1=None,
     name_amount_attribute='amount',
-    common_attributes_edges={'type': 'flow'},
-    create_using=GreenGraphMultiDiGraph,
+    common_attributes_edges={'type': 'flow', 'unit': 'kg'},
+    create_using=GreenMultiDiGraph,
 )
+# %%

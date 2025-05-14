@@ -12,7 +12,7 @@ import uuid
 from greengraph.utility.logging import logtimer
 import uuid
 
-from greengraph.utility.graph import from_biadjacency_matrix
+from greengraph.utility.graph import graph_from_matrix
 
 
 def graph_system_from_input_output_matrices(
@@ -269,7 +269,7 @@ def graph_system_from_input_output_matrices(
         logging.info(
             f"# of nodes: {len(array_extension.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_extension) & (array_extension != 0))):,}"
         )
-        B = from_biadjacency_matrix(
+        B = graph_from_matrix(
             matrix=array_extension.values,
             nodes_axis_0=array_extension.coords['rows'].values.tolist(),
             nodes_axis_1=array_extension.coords['cols'].values.tolist(),
