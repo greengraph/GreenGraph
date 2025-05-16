@@ -4,6 +4,54 @@ import networkx as nx
 import numpy as np
 from greengraph.utility.logging import logtimer
 
+
+def get_nodes_from_node_container(
+    node_container: Any | tuple[Any, dict[str, Any]]
+) -> list:
+    r"""
+    Given a container of nodes, returns a list of nodes (without the attributes).
+
+    In NetworkX, a container of nodes can be:
+
+    1. A list of nodes (list, dict, set, etc.)
+    2. A container of (node, attribute dict) tuples
+    
+    See Also
+    --------
+    [networkx.Graph.add_nodes_from](https://networkx.org/documentation/stable/reference/classes/generated/networkx.Graph.add_nodes_from.html)
+
+    Example
+    -------
+    ```python
+    >>> from greengraph.utility.graph import get_nodes_from_node_container
+    >>> node_container = [
+        ('N1', {'type': 'production', 'unit': 'kg', 'production': 1.0}),
+        ('N2', {'type': 'production', 'unit': 'kg', 'production': 1.0})
+    ]
+    >>> get_nodes_from_node_container(node_container)
+    ['N1', 'N2']
+    ```
+
+    Parameters
+    ----------
+    node_container : list | np.ndarray
+        A container of nodes, which can be a list, dict, set, etc.
+        Each element can be a node or a tuple of (node, attribute dict).
+    
+    Returns
+    -------
+    list
+        A list of nodes without the attributes.
+    """
+    list_nodes = []
+    for item in node_container:
+        if isinstance(item, Iterable) and isinstance(item[-1], dict):
+            list_nodes.append(item[0])
+        else:
+            list_nodes.append(item)
+    return list_nodes
+
+
 def graph_from_matrix(
     matrix: np.ndarray,
     nodes_axis_0: Iterable[Any | tuple[Any, dict[str, Any]]],
@@ -69,15 +117,18 @@ def graph_from_matrix(
             G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
             G.add_nodes_from(nodes_axis_1, **(common_attributes_nodes_axis_1 or {}))
             row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
-            col_labels_nonzero = np.array(nodes_axis_1)[col_indices_nonzero]
+            row_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
+            col_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_1))[col_indices_nonzero]
     else:
         with logtimer('creating graph from adjacency matrix (same row/column labels).'):
             G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
             row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(nodes_axis_0)[row_indices_nonzero]
-            col_labels_nonzero = np.array(nodes_axis_0)[col_indices_nonzero]
+            row_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
+            col_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[col_indices_nonzero]
     
+    """
+
+    """
     values = matrix[row_indices_nonzero, col_indices_nonzero]
     edges = [
         (
