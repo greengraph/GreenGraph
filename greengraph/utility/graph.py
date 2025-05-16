@@ -5,7 +5,7 @@ import numpy as np
 from greengraph.utility.logging import logtimer
 
 
-def get_nodes_from_node_container(
+def _get_nodes_from_node_container(
     node_container: Any | tuple[Any, dict[str, Any]]
 ) -> list:
     r"""
@@ -15,6 +15,10 @@ def get_nodes_from_node_container(
 
     1. A list of nodes (list, dict, set, etc.)
     2. A container of (node, attribute dict) tuples
+
+    Warnings
+    --------
+
     
     See Also
     --------
@@ -63,8 +67,10 @@ def graph_from_matrix(
     create_using: type,
 ) -> nx.MultiDiGraph:
     """
-    Given a biadjacency matrix, two lists of nodes
-    and two dictionaries of metadata attributes to be applied to all nodes, creates a bipartite graph.
+    Given an array and one-two lists of nodes and additional attributes, creates a graph.
+    
+    This function can create a graph from either an adjacency matrix or a biadjacency matrix.
+    
 
     Example
     -------
@@ -73,9 +79,9 @@ def graph_from_matrix(
     >>> from_biadjacency_matrix(
     ...     matrix=B,
     ...     nodes_axis_0=[1, 2, 3],
-    ...     nodes_axis_1=[A, B, C],
-    ...     common_attributes_nodes_axis_0={"type": "process"},
-    ...     common_attributes_nodes_axis_1={"type": "sector"},
+    ...     nodes_axis_1=[A, B],
+    ...     common_attributes_nodes_axis_0={"type": "process", 'unit': "kg"},
+    ...     common_attributes_nodes_axis_1={"type": "sector", 'unit': "USD"},
     ...     create_using=nx.MultiDiGraph,
     ... )
     ```
@@ -83,11 +89,11 @@ def graph_from_matrix(
     See Also
     --------
     - [`networkx.algorithms.bipartite.from_biadjacency_matrix`](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.bipartite.matrix.from_biadjacency_matrix.html)
-    - ["Add `nodelist` to `from_biadjacency_matrix`"](https://github.com/networkx/networkx/discussions/7960) discussion on GitHub
 
     Warnings
     --------
-    To be replaced with updated NetworkX function in future versions.
+    When using `create_using=gg.GreenMultiDiGraph`,
+    ensure that you pass the required node and/or edge attributes.
 
     Parameters
     ----------
@@ -112,23 +118,22 @@ def graph_from_matrix(
     """
     G = nx.empty_graph(n=0, create_using=create_using)
 
-    if nodes_axis_1 is not None and common_attributes_nodes_axis_1 is not None:
+    if nodes_axis_0 is None:
+        raise ValueError("Some nodes must be provided.")
+    if nodes_axis_1 is not None:
         with logtimer('creating graph from bi-adjacency matrix (different row/column labels).'):
             G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
             G.add_nodes_from(nodes_axis_1, **(common_attributes_nodes_axis_1 or {}))
             row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
-            col_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_1))[col_indices_nonzero]
+            row_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
+            col_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_1))[col_indices_nonzero]
     else:
         with logtimer('creating graph from adjacency matrix (same row/column labels).'):
             G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
             row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
-            col_labels_nonzero = np.array(get_nodes_from_node_container(nodes_axis_0))[col_indices_nonzero]
+            row_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
+            col_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[col_indices_nonzero]
     
-    """
-
-    """
     values = matrix[row_indices_nonzero, col_indices_nonzero]
     edges = [
         (

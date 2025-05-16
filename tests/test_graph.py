@@ -1,3 +1,4 @@
+# %%
 import pytest
 import numpy as np
 from greengraph.core import GreenMultiDiGraph
@@ -50,6 +51,7 @@ def test_containers_of_node_attr_tuples(container_input, expected_output_nodes):
 
 def test_graph_from_matrix_adjacency():
     """
+    For a simple adjacency matrix, the function should create a graph with the correct nodes and edges.
     """
     data = np.array([
         [0, 1, 0],
@@ -89,6 +91,7 @@ def test_graph_from_matrix_adjacency():
 
 def test_graph_from_matrix_biadjacency():
     """
+    For a bi-adjacency matrix, the function should create a graph with the correct nodes and edges.
     """
     data = np.array([
         [0, 1, 0],
@@ -119,11 +122,13 @@ def test_graph_from_matrix_biadjacency():
     assert list(G.nodes(data=True)) == [
         ('N1', {'type': 'production', 'unit': 'kg', 'production': 1.0}),
         ('N2', {'type': 'production', 'unit': 'kg', 'production': 1.0}),
-        ('N3', {'type': 'production', 'unit': 'kg', 'production': 1.0})
+        ('A', {'type': 'extension', 'unit': 'kg', 'production': 1.0}),
+        ('B', {'type': 'extension', 'unit': 'kg', 'production': 1.0}),
+        ('C', {'type': 'extension', 'unit': 'kg', 'production': 1.0})
     ]
 
     assert list(G.edges(data=True)) == [
-        ('N1', 'N2', {'amount': 1.0, 'type': 'flow', 'unit': 'kg'}),
-        ('N2', 'N1', {'amount': 1.0, 'type': 'flow', 'unit': 'kg'}),
-        ('N2', 'N3', {'amount': 5.0, 'type': 'flow', 'unit': 'kg'})
+        ('N1', 'B', {'amount': 1.0, 'type': 'flow', 'unit': 'kg'}),
+        ('N2', 'A', {'amount': 1.0, 'type': 'flow', 'unit': 'kg'}),
+        ('N2', 'C', {'amount': 5.0, 'type': 'flow', 'unit': 'kg'})
     ]
