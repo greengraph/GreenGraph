@@ -3,6 +3,7 @@
 import pandas as pd
 import networkx as nx
 from greengraph.utility.logging import logtimer
+from greengraph.utility.download import _load_file_from_zenodo_with_caching
 
 
 def _load_iwp_data(
@@ -65,10 +66,22 @@ def _load_iwp_data(
         DataFrame containing characterization factors for the specified versions of IMPACT World+ and Ecoinvent.
     """
 
-    iwp_version_id = {
+    versions_iwp_zenodo_id = {
         '2.0.1': '8200703',
         '2.1': '14041258'
     }
+    versions_ecoinvent = ['3.8', '3.9', '3.10', '3.11']
+
+    if version_iwp not in versions_iwp_zenodo_id:
+        raise ValueError(f"Invalid version of IMPACT World+: {version_iwp}. Valid versions are: {list(versions_iwp_zenodo_id.keys())}")
+    if type_iwp not in ['footprint_version', 'expert_version']:
+        raise ValueError(f"Invalid type of IMPACT World+: {type_iwp}. Valid types are: ['footprint_version', 'expert_version']")
+    if database not in ['ecoinvent', 'exiobase']:
+        raise ValueError(f"Invalid database: {database}. Valid databases are: ['ecoinvent', 'exiobase']")
+    if database == 'ecoinvent' and version_database not in versions_ecoinvent:
+        raise ValueError(f"Invalid version of Ecoinvent: {version_database}. Valid versions are: {versions_ecoinvent}")
+    if database == 'exiobase' and version_database is not None:
+        raise ValueError(f"Invalid version of Exiobase: {version_database}. Exiobase version should be None (because only version 3 is implemented in IW+).")
 
     if version_database == None:
         version_database = ""
@@ -76,16 +89,21 @@ def _load_iwp_data(
         version_database = version_database.replace('.', '')
         version_database = f"_v{version_database}"
     
-    path_download = f"https://zenodo.org/records/{iwp_version_id[version_iwp]}/files/impact_world_plus_{version_iwp}_{type_iwp}_{database}{version_database}.xlsx?download=1"
+    download = _load_file_from_zenodo_with_caching(
+        name_file=f'impact_world_plus_{version_iwp}_{type_iwp}_{database}{version_database}.xlsx',
+        name_dir_cache='useeio',
+        zenodo_record=f'{versions_iwp_zenodo_id[version_iwp]}',
+    )
 
-    with logtimer(f"downloading IMPACT World+ data ({database.capitalize()}) from Zenodo."):
+    with logtimer(f"extracting IMPACT World+ data ({database.capitalize()}) from file."):
         df = pd.read_excel(
-            io=path_download,
+            io=download['path_cached_file'],
             sheet_name='Sheet1',
             header=0,
             index_col=0,
             engine='openpyxl',
         )
+
     return df
 
 

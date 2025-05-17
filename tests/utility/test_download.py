@@ -5,10 +5,15 @@ from greengraph import remove_cache_dir
 def test_real_zenodo_download_and_caching():
     """
     Tests the _load_file_from_zenodo_with_caching function by:
-    1. Downloading a known public file from Zenodo.
+    
+    1. Downloading a known public test file from Zenodo.
     2. Verifying its content.
     3. Calling the function again for the same file.
     4. Verifying that the file is served from cache (by checking modification time).
+
+    References
+    ----------
+    [Zenodo "Test File"](https://doi.org/10.5281/zenodo.13242884)
     """
     zenodo_record_id = "13242885"
     file_name_on_zenodo = "test1.txt"
