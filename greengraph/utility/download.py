@@ -9,7 +9,7 @@ def _load_file_from_zenodo_with_caching(
     name_file: str,
     name_dir_cache: str,
     zenodo_record: str,
-) -> Path:
+) -> dict[str, Path]:
     r"""
     Given a file name, a directory name, and a Zenodo record ID,
     downloads the file from Zenodo and caches it locally.
