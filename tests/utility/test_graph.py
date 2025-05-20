@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from greengraph.core import GreenMultiDiGraph
 from greengraph.utility.graph import (
-    get_nodes_from_node_container,
+    _get_nodes_from_node_container,
     graph_from_matrix,
 )
 
@@ -45,13 +45,28 @@ from greengraph.utility.graph import (
 def test_containers_of_node_attr_tuples(container_input, expected_output_nodes):
     """
     For different containers of nodes, the function should return a list of nodes without the attributes.
+
+    Tests the function by:
+
+    1. Providing a list of tuples with attributes.
+    2. Providing a list of nodes without attributes.
+    3. Providing a list of nodes with attributes.
+    4. Providing a list of nodes, only some with attributes.
+    5. Providing a list of nodes, only some with attributes.
     """
-    assert get_nodes_from_node_container(container_input) == expected_output_nodes
+    assert _get_nodes_from_node_container(container_input) == expected_output_nodes
 
 
 def test_graph_from_matrix_adjacency():
     """
     For a simple adjacency matrix, the function should create a graph with the correct nodes and edges.
+    
+    Tests the function by:
+
+    1. Creating a simple adjacency matrix.
+    2. Defining a list of nodes with attributes.
+    3. Calling the function to create a graph.
+    4. Asserting that the nodes and edges in the graph match the expected values.
     """
     data = np.array([
         [0, 1, 0],
@@ -92,6 +107,13 @@ def test_graph_from_matrix_adjacency():
 def test_graph_from_matrix_biadjacency():
     """
     For a bi-adjacency matrix, the function should create a graph with the correct nodes and edges.
+
+    Tests the function by:
+
+    1. Creating a bi-adjacency matrix.
+    2. Defining a list of nodes with attributes for both axes.
+    3. Calling the function to create a graph.
+    4. Asserting that the nodes and edges in the graph match the expected values.
     """
     data = np.array([
         [0, 1, 0],

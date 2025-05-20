@@ -8,6 +8,7 @@ import networkx as nx
 import xarray as xr
 import importlib.metadata
 import random
+from typing import Optional
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -24,7 +25,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
         A MultiDiGraph is a [**di**rected **graph**](https://en.wikipedia.org/wiki/Directed_graph) that allows **multi**ple edges between nodes:
 
-        ``` mermaid
+        ```mermaid
         graph TD
         1((1)) -->|"(1,2)"₁| 2((2))
         1 -->|"(1,2)₂"| 2
@@ -223,12 +224,16 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     def add_node(
         self,
         node_for_adding,
+        dict_attr: Optional[dict] = None,
         **attr
     ) -> None:
         r"""
         """
-        self._validate_node_attributes(node_for_adding, attr)
-        super().add_node(node_for_adding, **attr)
+        dict_attr_combined = {**attr, **(dict_attr or {})}
+        self._validate_node_attributes(node=node_for_adding, dict_attr=dict_attr_combined)
+        super().add_node(node_for_adding)
+        self.nodes[node_for_adding].update(dict_attr_combined)
+        
     
     def add_nodes_from(
         self,
@@ -237,8 +242,6 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     ) -> None:
         """
         """
-        dict_all_attributes = {}
-        dict_all_attributes.update(attr)
         for node_entry in nodes_for_adding:
             """
             nodes_for_adding can be a list of tuples,
@@ -262,11 +265,13 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
                 ...
             ]
             """
+            dict_all_attributes = {}
+            dict_all_attributes.update(attr)
             if (
                 isinstance(node_entry, tuple) and
-                isinstance(node_entry[1], dict)
+                isinstance(node_entry[-1], dict)
             ):
-                dict_all_attributes.update(node_entry[1])
+                dict_all_attributes.update(node_entry[-1])
                 self._validate_node_attributes(
                     node=node_entry[0],
                     dict_attr=dict_all_attributes
