@@ -213,7 +213,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
             valid_types = "', '".join(dict_required_attributes.keys())
             raise ValueError(f"Invalid edge type: '{edge_type}'. Valid types are: '{valid_types}'.")
 
-        set_required_attributes = dict_required_attributes[edge_type]
+        set_required_attributes = set(dict_required_attributes[edge_type])
         set_provided_attributes = set(dict_attr.keys())
         set_missing_attributes = set_required_attributes - set_provided_attributes
 
@@ -323,6 +323,11 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         Warnings
         --------
         Beware of bananas.
+
+        2-tuples (u, v) or
+        3-tuples (u, v, d) for an edge data dict d, or
+        3-tuples (u, v, k) for not iterable key k, or
+        4-tuples (u, v, k, d) for an edge with data and key k.
 
         See Also
         --------
