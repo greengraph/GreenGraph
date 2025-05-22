@@ -68,18 +68,18 @@ class useeio:
         HTTPError
             If the request to download the USEEIO data fails.
         """
-        excel_file = _load_file_from_zenodo_with_caching(
+        path_excel_file = _load_file_from_zenodo_with_caching(
             name_file=f'USEEIOv{version}.xlsx',
             name_dir_cache='useeio',
             zenodo_record='15272306',
         )
 
-        return useeio.format_useeio_matrices(path_useeio=excel_file)
+        return useeio.format_useeio_matrices(path_useeio=path_excel_file['path_cached_file'])
         
     @staticmethod
     def format_useeio_matrices(
         path_useeio: Path
-    ) -> pd.DataFrame:
+    ) -> dict:
         r"""
         Given a path to a USEEIO Excel file, extracts the matrices and metadata from the file
         and returns the $\mathbf{A}, \mathbf{B}, \mathbf{C}$ matrices and metadata as lists of dictionaries.
@@ -249,6 +249,7 @@ class exiobase:
         """
         return list(exiobase._available_versions.keys())
     
+    @staticmethod
     def load_exiobase_data_from_zenodo(
         version: str,
         type: str,
