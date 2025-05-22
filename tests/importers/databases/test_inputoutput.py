@@ -1,16 +1,31 @@
+# %%
 import pytest
-from greengraph.importers.databases.inputoutput import useeio
+from importlib import resources
+from greengraph.importers.databases.inputoutput import (
+    useeio,
+    exiobase
+)
 
-# TODO add correct path to test data!
 def test_format_useeio_matrices():
     try:
-        dict_useeio = useeio.format_useeio_matrices(path_useeio="tests/importers/databases/test_data/useeio_test.csv")
+        path_useeio_fixture = resources.files('tests.fixtures.databases').joinpath('fixture_USEEIOv2.0.1-411.xlsx')
+        dict_useeio = useeio.format_useeio_matrices(path_useeio=path_useeio_fixture)
     except:
         raise Exception("Error in formatting USEEIO matrices")
     
 
-def test_useeio_matrices_to_greengraph():
-    
-
 def test_format_exiobase_matrices():
-    pass
+    try:
+        path_exiobase_fixture = resources.files('tests.fixtures.databases').joinpath('fixture_IOT_2014_pxp.zip')
+        dict_exiobase_files  = exiobase.unpack_exiobase_zip(
+            path_zip=path_exiobase_fixture,
+            year=2014,
+            type="pxp",
+        )
+        dict_exiobase = exiobase.format_exiobase_matrices(
+            path_A=dict_exiobase_files['path_A'],
+            path_S=dict_exiobase_files['path_S'],
+            path_S_metadata=dict_exiobase_files['path_S_metadata'],
+        )
+    except:
+        raise Exception("Error in formatting USEEIO matrices")

@@ -297,34 +297,68 @@ class exiobase:
             name_dir_cache="useeio",
             zenodo_record=exiobase._available_versions[version]['zenodo_record'],
         )
-
-        with logtimer(f"extracting Exiobase data from zip file."):
-            with zipfile.ZipFile(dict_paths_download['path_cached_file'], 'r') as zip:
-                    file_A = zip.extract(
-                        member=f"IOT_{year}_{type}/A.txt",
-                        path=dict_paths_download['path_dir_cache']
-                    )
-                    file_S = zip.extract(
-                        member=f"IOT_{year}_{type}/satellite/S.txt",
-                        path=dict_paths_download['path_dir_cache']
-                    )
-                    file_S_metadata = zip.extract(
-                        member=f"IOT_{year}_{type}/satellite/unit.txt",
-                        path=dict_paths_download['path_dir_cache']
-                    )
-        
-        return exiobase.format_exiobase_matrices(
-            path_A=Path(file_A),
-            path_S=Path(file_S),
-            path_S_metadata=Path(file_S_metadata)
+        dict_exiobase_files = exiobase.unpack_exiobase_zip(
+            path_zip=dict_paths_download['path_cached_file'],
+            year=year,
+            type=type,
         )
+        return exiobase.format_exiobase_matrices(
+            path_A=dict_exiobase_files['path_A'],
+            path_S=dict_exiobase_files['path_S'],
+            path_S_metadata=dict_exiobase_files['path_S_metadata'],
+        )
+
+    
+    @staticmethod
+    def unpack_exiobase_zip(
+        path_zip: Path,
+        year: int,
+        type: str
+    ) -> dict:
+        """
+        Unpacks the Exiobase zip file and returns the paths to the relevant files.
+
+        Parameters
+        ----------
+        path_zip : Path
+            Path to the Exiobase zip file. This can be a local file path or a BytesIO object.
+        year : int
+            The year of Exiobase data to load. Must be one of the years available in the Exiobase dataset.
+        type : str
+            The type of Exiobase data to load. Must be either `ixi` (=industry by industry) or `pxp` (=product by product).
+
+        Returns
+        -------
+        dict
+            A dictionary containing the paths to the relevant files.
+        """
+        with logtimer(f"unpacking Exiobase zip file."):
+            with zipfile.ZipFile(path_zip, 'r') as zip:
+                file_A = zip.extract(
+                    member=f"IOT_{year}_{type}/A.txt",
+                    path=APP_CACHE_BASE_DIR
+                )
+                file_S = zip.extract(
+                    member=f"IOT_{year}_{type}/satellite/S.txt",
+                    path=APP_CACHE_BASE_DIR
+                )
+                file_S_metadata = zip.extract(
+                    member=f"IOT_{year}_{type}/satellite/unit.txt",
+                    path=APP_CACHE_BASE_DIR
+                )
+
+        return {
+            'path_A': Path(file_A),
+            'path_S': Path(file_S),
+            'path_S_metadata': Path(file_S_metadata)
+        }
 
     @staticmethod
     def format_exiobase_matrices(
         path_A: Path,
         path_S: Path,
         path_S_metadata: Path
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> dict:
         r"""
         Given a path to the relevant Exiobase txt-files, extracts the matrices and metadata from the files
         and returns the $\mathbf{A}$ and $\mathbf{B}$ matrices and metadata as lists of dictionaries.
