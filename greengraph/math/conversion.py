@@ -8,22 +8,22 @@ import xarray as xr
 def _generate_matrices_from_graph(
     G: nx.MultiDiGraph,
     matrixformat: str,
-    A: bool,
-    B: bool,
-    Q: bool,
-    A_sort_attributes: list[str] = None,
-    B_sort_attributes: list[str] = None,
-    Q_sort_attributes: list[str] = None,
-) -> np.ndarray:
+    generate_A: bool,
+    generate_B: bool,
+    generate_Q: bool,
+    A_sort_attributes: list[str] = [],
+    B_sort_attributes: list[str] = [],
+    Q_sort_attributes: list[str] = [],
+) -> dict:
     """
     Generate matrices.......
     """
-    if A == False:
+    if generate_A == False:
         raise ValueError("A must be True.")
-    if B == False and Q == True:
+    if generate_B == False and generate_Q == True:
         raise ValueError("B must be True if Q is True.")
 
-    if A_sort_attributes is None:
+    if len(A_sort_attributes) == 0:
         lambdafunction_sort_keys = lambda node: node
     else:
         lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in A_sort_attributes)
@@ -54,8 +54,11 @@ def _generate_matrices_from_graph(
         array_production = np.array([G.nodes[node]['production'] for node in A.coords['rows'].values])
         Anorm = A / array_production
 
-    if B == True:
-        if B_sort_attributes is None:
+    if generate_B == False:
+        B = None
+        Bnorm = None
+    else:
+        if len(B_sort_attributes) == 0:
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
@@ -85,8 +88,10 @@ def _generate_matrices_from_graph(
         with logtimer("Normalizing biosphere matrix ('I-B'-convention)."):
             Bnorm = B / array_production
 
-    if Q == True:
-        if Q_sort_attributes is None:
+    if generate_Q == False:
+        Q = None
+    else:
+        if len(Q_sort_attributes) == 0:
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
