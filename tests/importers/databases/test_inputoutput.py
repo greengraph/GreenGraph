@@ -17,11 +17,7 @@ def test_format_useeio_matrices():
 def test_format_exiobase_matrices():
     try:
         path_exiobase_fixture = resources.files('tests.fixtures.databases').joinpath('fixture_IOT_2014_pxp.zip')
-        dict_exiobase_files  = exiobase.unpack_exiobase_zip(
-            path_zip=path_exiobase_fixture,
-            year=2014,
-            type="pxp",
-        )
+        dict_exiobase_files  = exiobase.unpack_exiobase_zip(path_zip=path_exiobase_fixture)
         dict_exiobase = exiobase.format_exiobase_matrices(
             path_A=dict_exiobase_files['path_A'],
             path_S=dict_exiobase_files['path_S'],

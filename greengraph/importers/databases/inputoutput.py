@@ -252,8 +252,6 @@ class exiobase:
     @staticmethod
     def load_exiobase_data_from_zenodo(
         version: str,
-        type: str,
-        year: int
     ) -> dict:
         """
         Given a version string of the Exiobase dataset, downloads the corresponding data from the Zenodo repository
@@ -272,11 +270,6 @@ class exiobase:
         version : str
             The version of Exiobase to use. Must be one of the available versions.
             See [`greengraph.importers.databases.inputoutput.exiobase.list_available_versions`][] for a list of available versions.
-        type : str
-            The type of Exiobase data to load. Must be either `ixi` (=industry by industry) or `pxp` (=product by product).
-        year : int
-            The year of Exiobase data to load. Must be one of the years available in the Exiobase dataset.
-        
         Returns
         -------
         dict
@@ -312,8 +305,6 @@ class exiobase:
     @staticmethod
     def unpack_exiobase_zip(
         path_zip: Path,
-        year: int,
-        type: str
     ) -> dict:
         """
         Unpacks the Exiobase zip file and returns the paths to the relevant files.
@@ -322,10 +313,6 @@ class exiobase:
         ----------
         path_zip : Path
             Path to the Exiobase zip file. This can be a local file path or a BytesIO object.
-        year : int
-            The year of Exiobase data to load. Must be one of the years available in the Exiobase dataset.
-        type : str
-            The type of Exiobase data to load. Must be either `ixi` (=industry by industry) or `pxp` (=product by product).
 
         Returns
         -------
@@ -333,18 +320,27 @@ class exiobase:
             A dictionary containing the paths to the relevant files.
         """
         with logtimer(f"unpacking Exiobase zip file."):
+            
             with zipfile.ZipFile(path_zip, 'r') as zip:
+
+                path_file_A = [name for name in zip.namelist() if name.endswith('A.txt')]
+                if len(path_file_A) == 0:
+                    raise ValueError("No 'A.txt' found in zip file.")
+                elif len(path_file_A) > 1:
+                    raise ValueError("Multiple 'A.txt' found in zip file")
+                top_level_dir = path_file_A[0].split('/')[0]
+
                 file_A = zip.extract(
-                    member=f"IOT_{year}_{type}/A.txt",
-                    path=APP_CACHE_BASE_DIR
+                    member=f"{top_level_dir}/A.txt",
+                    path=APP_CACHE_BASE_DIR / 'exiobase'
                 )
                 file_S = zip.extract(
-                    member=f"IOT_{year}_{type}/satellite/S.txt",
-                    path=APP_CACHE_BASE_DIR
+                    member=f"{top_level_dir}/satellite/S.txt",
+                    path=APP_CACHE_BASE_DIR  / 'exiobase'
                 )
                 file_S_metadata = zip.extract(
-                    member=f"IOT_{year}_{type}/satellite/unit.txt",
-                    path=APP_CACHE_BASE_DIR
+                    member=f"{top_level_dir}/satellite/unit.txt",
+                    path=APP_CACHE_BASE_DIR  / 'exiobase'
                 )
 
         return {
