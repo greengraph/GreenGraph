@@ -196,9 +196,9 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         """
 
         dict_required_attributes = {
-            'flow': {'amount', 'unit'},
+            'flow': {'amount'},
             'concordance': {},
-            'characterization': {'weight', 'unit'},
+            'characterization': {'weight'},
         }
 
         if dict_attr is None:

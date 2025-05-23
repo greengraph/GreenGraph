@@ -59,9 +59,9 @@ def _get_nodes_from_node_container(
 def graph_from_matrix(
     matrix: np.ndarray,
     nodes_axis_0: Iterable[Any | tuple[Any, dict[str, Any]]],
-    nodes_axis_1: Iterable[Any | tuple[Any, dict[str, Any]]],
-    common_attributes_nodes_axis_0: dict,
-    common_attributes_nodes_axis_1: dict,
+    nodes_axis_1: Iterable[Any | tuple[Any, dict[str, Any]]] | None,
+    common_attributes_nodes_axis_0: dict | None,
+    common_attributes_nodes_axis_1: dict | None,
     name_amount_attribute: str,
     common_attributes_edges: dict,
     create_using: type,

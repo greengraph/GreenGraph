@@ -9,9 +9,8 @@ import xarray as xr
 import numpy as np
 import logging
 import uuid
+from greengraph.core import GreenMultiDiGraph
 from greengraph.utility.logging import logtimer
-import uuid
-
 from greengraph.utility.graph import graph_from_matrix
 
 
@@ -20,14 +19,14 @@ def graph_system_from_input_output_matrices(
     assign_new_uuids: bool,
     str_production_nodes_uuid: str,
     str_extension_nodes_uuid: str,
-    str_indicator_nodes_uuid: str,
+    str_indicator_nodes_uuid: str | None,
     matrix_convention: str,
     array_production: np.ndarray,
     array_extension: np.ndarray,
-    array_indicator: np.ndarray,
+    array_indicator: np.ndarray | None,
     list_dicts_production_node_metadata: list[dict],
     list_dicts_extension_node_metadata: list[dict],
-    list_dicts_indicator_node_metadata: list[dict],
+    list_dicts_indicator_node_metadata: list[dict] | None,
 ) -> nx.MultiDiGraph:
     r"""
     Create a MultiDiGraph from technosphere and biosphere matrices.
@@ -186,34 +185,32 @@ def graph_system_from_input_output_matrices(
         raise ValueError("matrix_convention must be 'I-A' or 'A'.")
     if matrix_convention == 'A':
         np.fill_diagonal(array_production, 0)
-        A = np.abs(A)
+        array_production = np.abs(array_production)
     elif matrix_convention == 'I-A':
         if not (array_production >= 0).all():
             raise ValueError("All entries in the technosphere matrix must be non-negative.")
-
+    
     # Production Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_production_node_metadata):
-        if assign_new_uuids:
-            dict_node_metadata['uuid'] = str(uuid.uuid4())
-        else:
-            dict_node_metadata['uuid'] = dict_node_metadata[str_production_nodes_uuid]
-        dict_node_metadata['index'] = idx
-        dict_node_metadata['type'] = 'production'
-        dict_node_metadata['system'] = name_system
-        if matrix_convention == 'I-A':
-            dict_node_metadata['production'] = 1.0
-        elif matrix_convention == 'A':
-            dict_node_metadata['production'] = array_production[idx, idx]
+        dict_node_metadata.update({
+            'uuid': str(uuid.uuid4()) if assign_new_uuids else dict_node_metadata[str_production_nodes_uuid],
+            'index': idx,
+            'type': 'production',
+            'system': name_system,
+            'production': 1.0 if matrix_convention == 'I-A' else array_production[idx, idx]
+        })
+    list_tuples_production_node_metadata = [(d['uuid'], d) for d in list_dicts_production_node_metadata]
 
     # Extension Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_extension_node_metadata):
-        if assign_new_uuids:
-            dict_node_metadata['uuid'] = str(uuid.uuid4())
-        else:
-            dict_node_metadata['uuid'] = dict_node_metadata[str_extension_nodes_uuid]
-        dict_node_metadata['index'] = idx       
-        dict_node_metadata['type'] = 'extension'
-        dict_node_metadata['system'] = name_system
+        dict_node_metadata.update({
+            'uuid': str(uuid.uuid4()) if assign_new_uuids else dict_node_metadata[str_extension_nodes_uuid],
+            'index': idx,
+            'type': 'extension',
+            'system': name_system,
+            'production': 1.0
+        })
+    list_tuples_extension_node_metadata = [(d['uuid'], d) for d in list_dicts_extension_node_metadata]
 
     # Indicator Metadata Parsing
     if array_indicator is not None:
@@ -226,93 +223,51 @@ def graph_system_from_input_output_matrices(
             dict_node_metadata['type'] = 'indicator'
             dict_node_metadata['system'] = name_system
     
-    array_production = xr.DataArray(
-        np.abs(array_production),
-        dims=['rows', 'cols'],
-        coords={
-            'rows': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata],
-            'cols': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata]
-        }
-    )
-    array_extension = xr.DataArray(
-        array_extension,
-        dims=['rows', 'cols'],
-        coords={
-            'rows': [node_metadata['uuid'] for node_metadata in list_dicts_extension_node_metadata],
-            'cols': [node_metadata['uuid'] for node_metadata in list_dicts_production_node_metadata]
-        }
-    )
-
-    if array_indicator is not None:
-        array_indicator = xr.DataArray(
-            array_indicator,
-            dims=['rows', 'cols'],
-            coords={
-                'rows': [node_metadata['uuid'] for node_metadata in list_dicts_indicator_node_metadata],
-                'cols': [node_metadata['uuid'] for node_metadata in list_dicts_extension_node_metadata]
-            }
-        )
-    
     with logtimer("creating MultiDiGraph from technosphere matrix."):
         logging.info(
-            f"# of nodes: {len(array_production.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_production) & (array_production != 0))):,}"
+            f"# of nodes: {len(array_production)}, # of edges: {(np.count_nonzero(~np.isnan(array_production) & (array_production != 0))):,}"
         )
-        A = nx.from_numpy_array(
-            array_production.values,
-            create_using=nx.MultiDiGraph,
-            parallel_edges=False,
-            edge_attr='flow',
-            nodelist=array_production.coords['rows'].values.tolist(),
+        A = graph_from_matrix(
+            matrix=array_production,
+            nodes_axis_0=list_tuples_production_node_metadata,
+            nodes_axis_1=None,
+            common_attributes_nodes_axis_0=None,
+            common_attributes_nodes_axis_1=None,
+            name_amount_attribute='amount',
+            common_attributes_edges={'type': 'flow'},
+            create_using=GreenMultiDiGraph,
         )
 
     with logtimer("creating MultiDiGraph from biosphere matrix."):
         logging.info(
-            f"# of nodes: {len(array_extension.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_extension) & (array_extension != 0))):,}"
+            f"# of nodes: {len(array_extension)}, # of edges: {(np.count_nonzero(~np.isnan(array_extension) & (array_extension != 0))):,}"
         )
         B = graph_from_matrix(
-            matrix=array_extension.values,
-            nodes_axis_0=array_extension.coords['rows'].values.tolist(),
-            nodes_axis_1=array_extension.coords['cols'].values.tolist(),
-            attributes_nodes_axis_0={'type': 'extension'},
-            attributes_nodes_axis_1={'type': 'production'},
-            amount_attribute='flow',
-            dict_attributes={
-                'type_origin': 'production',
-                'type_destination': 'extension',
-            },
-            create_using=nx.MultiDiGraph
+            matrix=array_extension,
+            nodes_axis_0=list_tuples_extension_node_metadata,
+            nodes_axis_1=list_tuples_production_node_metadata,
+            common_attributes_nodes_axis_0=None,
+            common_attributes_nodes_axis_1=None,
+            name_amount_attribute='amount',
+            common_attributes_edges={'type': 'flow'},
+            create_using=GreenMultiDiGraph,
         )
 
     if array_indicator is not None:
         with logtimer("creating MultiDiGraph from indicator matrix."):
             logging.info(
-                f"# of nodes: {len(array_indicator.coords['rows'])}, # of edges: {(np.count_nonzero(~np.isnan(array_indicator) & (array_indicator != 0))):,}"
+                f"# of nodes: {len(array_indicator)}, # of edges: {(np.count_nonzero(~np.isnan(array_indicator) & (array_indicator != 0))):,}"
             )
-            Q = from_biadjacency_matrix(
-                matrix=array_indicator.values,
-                nodes_axis_0=array_indicator.coords['rows'].values.tolist(),
-                nodes_axis_1=array_indicator.coords['cols'].values.tolist(),
-                attributes_nodes_axis_0={'type': 'indicator'},
-                attributes_nodes_axis_1={'type': 'extension'},
-                amount_attribute='weight',
-                dict_attributes={
-                    'type_origin': 'extension',
-                    'type_destination': 'indicator',
-                },
-                create_using=nx.MultiDiGraph
+            Q = graph_from_matrix(
+                matrix=array_indicator,
+                nodes_axis_0=list_dicts_indicator_node_metadata,
+                nodes_axis_1=list_tuples_extension_node_metadata,
+                common_attributes_nodes_axis_0=None,
+                common_attributes_nodes_axis_1=None,
+                name_amount_attribute='weight',
+                common_attributes_edges={'type': 'characterization'},
+                create_using=GreenMultiDiGraph,
             )
-
-    with logtimer("setting node attributes."):
-        for node_metadata in list_dicts_production_node_metadata:
-            for key, value in node_metadata.items():
-                A.nodes[node_metadata['uuid']][key] = value
-        for node_metadata in list_dicts_extension_node_metadata:
-            for key, value in node_metadata.items():
-                B.nodes[node_metadata['uuid']][key] = value
-        if array_indicator is not None:
-            for node_metadata in list_dicts_indicator_node_metadata:
-                for key, value in node_metadata.items():
-                    Q.nodes[node_metadata['uuid']][key] = value
 
     with logtimer("merging production and extension graphs. Whoop-whoop!"):
         if array_indicator is None:
@@ -328,28 +283,3 @@ def graph_system_from_input_output_matrices(
             del Q
             del BcomposeA
             return QcomposeBA
-        
-
-
-# %%
-
-from greengraph.importers.databases.inputoutput import useeio
-
-dct = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
-
-# %%
-
-G = graph_system_from_input_output_matrices(
-    name_system='useeio',
-    assign_new_uuids=True,
-    str_extension_nodes_uuid='name',
-    str_production_nodes_uuid='name',
-    str_indicator_nodes_uuid='name',
-    matrix_convention='I-A',
-    array_production=dct['A'].to_numpy(),
-    array_extension=dct['B'].to_numpy(),
-    array_indicator=dct['C'].to_numpy(),
-    list_dicts_production_node_metadata=dct['dicts_A_metadata'],
-    list_dicts_extension_node_metadata=dct['dicts_B_metadata'],
-    list_dicts_indicator_node_metadata=dct['dicts_C_metadata'],
-)
