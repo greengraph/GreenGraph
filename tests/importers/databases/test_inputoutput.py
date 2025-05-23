@@ -1,5 +1,6 @@
 # %%
 import pytest
+import numpy as np
 from importlib import resources
 from greengraph.importers.databases.inputoutput import (
     useeio,
@@ -44,15 +45,19 @@ def test_useeio_matrices_to_graph():
             matrix_convention='I-A',
             array_production=dict_useeio['A'].to_numpy(),
             array_extension=dict_useeio['B'].to_numpy(),
-            array_indicator=None,
+            array_indicator=dict_useeio['C'].to_numpy(),
             list_dicts_production_node_metadata=dict_useeio['dicts_A_metadata'],
             list_dicts_extension_node_metadata=dict_useeio['dicts_B_metadata'],
-            list_dicts_indicator_node_metadata=None,
+            list_dicts_indicator_node_metadata=dict_useeio['dicts_C_metadata'],
         )
         nodes_production = [n for n in G.nodes(data=True) if n[1]['type'] == 'production']
         nodes_extension = [n for n in G.nodes(data=True) if n[1]['type'] == 'extension']
+        nodes_indicator = [n for n in G.nodes(data=True) if n[1]['type'] == 'indicator']
 
-        assert len(G.edges()) == 11
+        number_of_edges_A = np.count_nonzero(dict_useeio['A'].to_numpy())
+        number_of_edges_B = np.count_nonzero(dict_useeio['B'].to_numpy())
+        number_of_edges_C = np.count_nonzero(dict_useeio['C'].to_numpy())
+        assert len(G.edges()) == number_of_edges_A + number_of_edges_B + number_of_edges_C
 
         assert set(
             [data['name'] for uuid, data in nodes_production]
@@ -71,6 +76,16 @@ def test_useeio_matrices_to_graph():
             '(1S)-Abscisic acid',
             '(E)-8-Dodecen-1-yl acetate'
         ])
+
+        assert set(
+            [data['name'] for uuid, data in nodes_indicator]
+        ) == set([
+            'Acidification Potential',
+            'Commercial Construction and Demolition Debris',
+            'Commercial Municipal Solid Waste',
+            'Commercial RCRA Hazardous Waste'
+        ])
+
+        return G
     except:
         raise Exception("Error in converting USEEIO matrices to graph")
-# %%

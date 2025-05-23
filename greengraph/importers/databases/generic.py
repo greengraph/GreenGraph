@@ -213,15 +213,17 @@ def graph_system_from_input_output_matrices(
     list_tuples_extension_node_metadata = [(d['uuid'], d) for d in list_dicts_extension_node_metadata]
 
     # Indicator Metadata Parsing
-    if array_indicator is not None:
+    if array_indicator is not None and list_dicts_indicator_node_metadata is not None:
         for idx, dict_node_metadata in enumerate(list_dicts_indicator_node_metadata):
-            if assign_new_uuids:
-                dict_node_metadata['uuid'] = str(uuid.uuid4())
-            else:
-                dict_node_metadata['uuid'] = dict_node_metadata[str_indicator_nodes_uuid]
-            dict_node_metadata['index'] = idx
-            dict_node_metadata['type'] = 'indicator'
-            dict_node_metadata['system'] = name_system
+            dict_node_metadata.update({
+                'uuid': str(uuid.uuid4()) if assign_new_uuids else dict_node_metadata[str_indicator_nodes_uuid],
+                'index': idx,
+                'type': 'indicator',
+                'system': name_system
+            })
+        list_tuples_indicator_node_metadata = [(d['uuid'], d) for d in list_dicts_indicator_node_metadata]
+    else:
+        list_tuples_indicator_node_metadata = None
     
     with logtimer("creating MultiDiGraph from technosphere matrix."):
         logging.info(
@@ -253,14 +255,14 @@ def graph_system_from_input_output_matrices(
             create_using=GreenMultiDiGraph,
         )
 
-    if array_indicator is not None:
+    if list_tuples_indicator_node_metadata is not None:
         with logtimer("creating MultiDiGraph from indicator matrix."):
             logging.info(
                 f"# of nodes: {len(array_indicator)}, # of edges: {(np.count_nonzero(~np.isnan(array_indicator) & (array_indicator != 0))):,}"
             )
             Q = graph_from_matrix(
                 matrix=array_indicator,
-                nodes_axis_0=list_dicts_indicator_node_metadata,
+                nodes_axis_0=list_tuples_indicator_node_metadata,
                 nodes_axis_1=list_tuples_extension_node_metadata,
                 common_attributes_nodes_axis_0=None,
                 common_attributes_nodes_axis_1=None,
