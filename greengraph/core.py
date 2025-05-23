@@ -8,7 +8,7 @@ import networkx as nx
 import xarray as xr
 import importlib.metadata
 import random
-from typing import Optional
+from typing import Optional, Any
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -125,8 +125,8 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     
     def _validate_node_attributes(
         self,
-        node,
-        dict_attr,
+        node: Any,
+        dict_attr: dict,
     ) -> None:
         r"""
         Given a node and a dictionary of attributes, validates that the node has the required attributes.
@@ -176,7 +176,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         
     def _validate_edge_attributes(
         self,
-        dict_attr
+        dict_attr: dict,
     ) -> None:
         r"""
         Given a dictionary of attributes, validates that the edge has the required attributes.
@@ -223,24 +223,117 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
     def add_node(
         self,
-        node_for_adding,
+        node_for_adding: Any,
         dict_attr: Optional[dict] = None,
+        validate: bool = True,
         **attr
     ) -> None:
         r"""
+        Given a node and a dictionary of attributes, adds the node to the graph.
+
+        Parameters
+        ----------
+        node_for_adding : str
+            The node to add.
+        dict_attr : dict, optional
+            A dictionary of attributes to add to the node.  
+            This dictionary must contain the `type` attribute and the required attributes for the node type.
+        validate : bool, optional
+            If `True`, validates the attributes of the node. Default is `True`. Use `False` to skip validation for well-thought-out-reasons.
+        **attr : dict
+            Additional attributes to add to the node.  
+            These attributes will be added to the node in addition to those in `dict_attr`.
+
+        Returns
+        -------
+        None (the node is added to the graph)
+
+        Raises
+        ------
+        ValueError
+            If `validate==True` and the node does not have all required attributes.
+        
+        See Also
+        --------
+        [`networkx.MultiDiGraph.add_node`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_node.html#networkx.MultiDiGraph.add_node)  
+        [`greengraph.core.GreenMultiDiGraph.add_nodes_from`](https://greengraph.readthedocs.io/en/latest/api/greengraph.core.html#greengraph.core.GreenMultiDiGraph.add_nodes_from)
+
+        Example
+        --------
+        ```python
+        >>> G = CustomMultiDiGraph()
+        >>> G.add_node(
+            'A',
+            dict_attr={
+                'type': 'production',
+                'name': 'electricity',
+                'product': 'electricity',
+                'production': 1000,
+                'unit': 'kWh',
+                'location': 'USA'
+            }
+        )
+        ```
         """
         dict_attr_combined = {**attr, **(dict_attr or {})}
-        self._validate_node_attributes(node=node_for_adding, dict_attr=dict_attr_combined)
+        if validate:
+            self._validate_node_attributes(node=node_for_adding, dict_attr=dict_attr_combined)
         super().add_node(node_for_adding)
         self.nodes[node_for_adding].update(dict_attr_combined)
         
     
     def add_nodes_from(
         self,
-        nodes_for_adding,
+        nodes_for_adding: Any | tuple[Any, dict],
+        validate: Optional[bool] = True,
         **attr
     ) -> None:
         """
+        Given a container of nodes, adds them to the graph.
+
+        Notes
+        -----
+        A node container can be:
+
+        1. A list of nodes (list, dict, set, etc.)
+        2. A container of (node, attribute dict) tuples
+
+        Parameters
+        ----------
+        nodes_for_adding : list | tuple
+            A container of nodes to add.  
+            This can be a list of nodes or a list of tuples, where the first element is the node and the second element is a dictionary of attributes.
+        validate : bool, optional
+            If `True`, validates the attributes of the nodes. Default is `True`. Use `False` to skip validation for well-thought-out-reasons.
+        **attr : dict
+            Additional attributes to add to the nodes.  
+            These attributes will be added to all nodes in the container.
+
+        Returns
+        -------
+        None (the nodes are added to the graph)
+
+        Raises
+        ------
+        ValueError
+            If `validate==True` and any node does not have all required attributes.
+
+        See Also
+        --------
+        [`networkx.MultiDiGraph.add_nodes_from`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_nodes_from.html#networkx.MultiDiGraph.add_nodes_from)  
+        [`greengraph.core.GreenMultiDiGraph.add_node`](https://greengraph.readthedocs.io/en/latest/api/greengraph.core.html#greengraph.core.GreenMultiDiGraph.add_node)
+
+        Example
+        --------
+        ```python
+        >>> G = CustomMultiDiGraph()
+        >>> G.add_nodes_from(
+            [
+                ('A', {'type': 'production', 'name': 'electricity', 'product': 'electricity', 'production': 1000, 'unit': 'kWh', 'location': 'USA'}),
+                ('B', {'type': 'extension', 'name': 'electricity', 'product': 'electricity', 'production': 2000, 'unit': 'kWh', 'location': 'DE'})
+            ]
+        )
+        ```
         """
         for node_entry in nodes_for_adding:
             """
@@ -265,32 +358,34 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
                 ...
             ]
             """
-            dict_all_attributes = {}
-            dict_all_attributes.update(attr)
-            if (
-                isinstance(node_entry, tuple) and
-                isinstance(node_entry[-1], dict)
-            ):
-                dict_all_attributes.update(node_entry[-1])
-                self._validate_node_attributes(
-                    node=node_entry[0],
-                    dict_attr=dict_all_attributes
-                )
-            else:
-                self._validate_node_attributes(
-                    node=node_entry,
-                    dict_attr=dict_all_attributes
-                )
+            if validate:
+                dict_all_attributes = {}
+                dict_all_attributes.update(attr)
+                if (
+                    isinstance(node_entry, tuple) and
+                    isinstance(node_entry[-1], dict)
+                ):
+                    dict_all_attributes.update(node_entry[-1])
+                    self._validate_node_attributes(
+                        node=node_entry[0],
+                        dict_attr=dict_all_attributes
+                    )
+                else:
+                    self._validate_node_attributes(
+                        node=node_entry,
+                        dict_attr=dict_all_attributes
+                    )
 
         super().add_nodes_from(nodes_for_adding, **attr)
 
     
     def add_edge(
         self,
-        u_for_edge,
-        v_for_edge,
-        key,
-        dict_attr,
+        u_for_edge: Any,
+        v_for_edge: Any,
+        key: Optional[Any] = None,
+        dict_attr: Optional[dict] = None,
+        validate: bool = True,
         **attr
     ) -> None:
         """
@@ -313,12 +408,18 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         [`networkx.MultiDiGraph.add_edge`](https://networkx.org/documentation/stable/reference/classes/generated/networkx.MultiDiGraph.add_edge.html#networkx.MultiDiGraph.add_edge)
         """
         dict_attr_combined = {**attr, **(dict_attr or {})}
-        self._validate_edge_attributes(dict_attr=dict_attr_combined)
+        if validate:
+            self._validate_edge_attributes(dict_attr=dict_attr_combined)
         key = super().add_edge(u_for_edge, v_for_edge, key)
         self[u_for_edge][v_for_edge][key].update(dict_attr_combined)
         return key
     
-    def add_edges_from(self, ebunch_to_add, **attr) -> None:
+    def add_edges_from(
+        self,
+        ebunch_to_add,
+        validate: bool = True,
+        **attr
+    ) -> None:
         """
         Warnings
         --------
@@ -351,7 +452,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
                 u, v, key, dict_attr = e
             else:
                 raise nx.NetworkXError(f"Edge tuple {e} must be a 2-tuple, 3-tuple or 4-tuple.")
-            key = self.add_edge(u, v, dict_attr=dict_attr, key=key, **attr)
+            key = self.add_edge(u, v, dict_attr=dict_attr, key=key, validate=validate, **attr)
             list_keys.append(key)
         nx._clear_cache(self)
         return list_keys
@@ -528,3 +629,5 @@ class GreenMatrixContainer():
             Q=self.matrices['Q']
         )
         return h
+# %%
+

@@ -6,7 +6,7 @@ from greengraph.utility.logging import logtimer
 
 
 def _get_nodes_from_node_container(
-    node_container: Any | tuple[Any, dict[str, Any]]
+    node_container: Any | tuple[Any, dict]
 ) -> list:
     r"""
     Given a container of nodes, returns a list of nodes (without the attributes).
