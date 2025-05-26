@@ -233,8 +233,11 @@ class exiobase:
     [EXIOBASE 3 description on Zenodo](https://doi.org/10.5281/zenodo.3583070)
     """
 
-    _available_versions = {
-        '3.8.2': {'zenodo_record': '5589597'},
+    _available_versions_and_years = {
+        '3.8.2': {
+            'zenodo_record': '5589597',
+            'available_years': [1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022],
+        }
     }
     
     @staticmethod
@@ -247,11 +250,39 @@ class exiobase:
         list[str]
             A list of available versions of the Exiobase dataset.
         """
-        return list(exiobase._available_versions.keys())
+        return list(exiobase._available_versions_and_years.keys())
+    
+    @staticmethod
+    def list_available_years(version: str) -> list[int]:
+        """
+        Lists the available years for a given version of the Exiobase dataset.
+
+        Parameters
+        ----------
+        version : str
+            The version of the Exiobase dataset to check. Must be one of the available versions.
+            See [`greengraph.importers.databases.inputoutput.exiobase.list_available_versions`][] for a list of available versions.
+
+        Returns
+        -------
+        list[int]
+            A list of available years for the given version of the Exiobase dataset.
+
+        Raises
+        ------
+        ValueError
+            If the version is not available.
+        """
+        if version not in exiobase._available_versions_and_years:
+            raise ValueError(f"Version {version} is not available.")
+        
+        return exiobase._available_versions_and_years[version]['available_years']
     
     @staticmethod
     def load_exiobase_data_from_zenodo(
         version: str,
+        year: int,
+        type: str
     ) -> dict:
         """
         Given a version string of the Exiobase dataset, downloads the corresponding data from the Zenodo repository
@@ -281,19 +312,25 @@ class exiobase:
         HTTPError
             If the request to download the USEEIO data fails.
         """
-
+        if not isinstance(year, int):
+            raise TypeError("year must be an integer.")
+        if not isinstance(type, str):
+            raise TypeError("type must be a string.")
+        type = type.lower()
         if type not in ['ixi', 'pxp']:
             raise ValueError("type must be either 'ixi' or 'pxp'")
-
+        if version not in exiobase._available_versions_and_years:
+            raise ValueError(f"Version {version} is not available.")
+        if year not in exiobase._available_versions_and_years[version]['available_years']:
+            raise ValueError(f"Year {year} is not available for version {version}. Available years: {exiobase._available_versions_and_years[version]['available_years']}")
+        
         dict_paths_download = _load_file_from_zenodo_with_caching(
             name_file=f"IOT_{year}_{type}.zip",
             name_dir_cache="useeio",
-            zenodo_record=exiobase._available_versions[version]['zenodo_record'],
+            zenodo_record=exiobase._available_versions_and_years[version]['zenodo_record'],
         )
         dict_exiobase_files = exiobase.unpack_exiobase_zip(
             path_zip=dict_paths_download['path_cached_file'],
-            year=year,
-            type=type,
         )
         return exiobase.format_exiobase_matrices(
             path_A=dict_exiobase_files['path_A'],
@@ -341,7 +378,7 @@ class exiobase:
                 file_S_metadata = zip.extract(
                     member=f"{top_level_dir}/satellite/unit.txt",
                     path=APP_CACHE_BASE_DIR  / 'exiobase'
-                )
+                )                    
 
         return {
             'path_A': Path(file_A),
