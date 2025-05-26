@@ -462,7 +462,8 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         self,
         dict_conditions: dict,
         data: bool = False,
-    ) -> str:
+        **cond: dict,
+    ) -> tuple[Any] | Any:
         r"""
         Given a dictionary of node attributes, returns the node (=UUID string)
         that matches all conditions.
@@ -505,22 +506,24 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         str
             The node (=UUID string) that matches the conditions.
         """
+        dict_combined_conditions = {**cond, **dict_conditions}
 
         def _condition_met(attrs: dict):
-            return all(key in attrs and attrs[key] == value for key, value in dict_conditions.items())
+            return all(key in attrs and attrs[key] == value for key, value in dict_combined_conditions.items())
 
         list_of_nodes = [(node, attrs) for node, attrs in self.nodes(data=True) if _condition_met(attrs)]
 
         if len(list_of_nodes) == 0:
             raise AttributeError("No nodes found with the given attributes.")
         elif len(list_of_nodes) > 1:
-            raise AttributeError("Multiple nodes found with the given attributes. Please refine your attributes.")
+            raise AttributeError("Multiple nodes found matching given attributes. Please refine attributes.")
         else:
             return list_of_nodes[0] if data else list_of_nodes[0][0]
         
+
     def get_random_node(
         self,
-        type: str = None,
+        type: Optional[str] = None,
         data: bool = False,
     ) -> str:
         r"""
@@ -537,9 +540,17 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         -------
         str
             The node (=UUID string) that matches the conditions.
+
+        Raises
+        ------
+        AttributeError
+            - If the graph is empty and no nodes are available to return.
+            - If no nodes are found with the given type.
         """
+        if len(self.nodes()) == 0:
+            raise AttributeError("The graph is empty. No nodes to return.")
         if type is not None:
-            list_nodes = [node for node, attrs in self.nodes(data=True) if attrs['type'] == type]
+            list_nodes = [node for node, attrs in self.nodes(data=data) if attrs['type'] == type]
             if len(list_nodes) == 0:
                 raise AttributeError(f"No nodes found with the given type '{type}'.")
             return random.choice(list_nodes)

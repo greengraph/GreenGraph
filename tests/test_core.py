@@ -6,8 +6,8 @@ from networkx import NetworkXError
 
 def test_graph_with_two_nodes():
     graph = GreenMultiDiGraph()
-    graph.add_node('existing_node_1', type='production', production=1, unit='kg')
-    graph.add_node('existing_node_2', type='production', production=1, unit='kg')
+    graph.add_node('existing_node_1', name='process 1', type='production', production=1, unit='kg')
+    graph.add_node('existing_node_2', name='process 2', type='production', production=1, unit='kg')
     return graph
     
 
@@ -369,3 +369,57 @@ def test_add_edges_from_valid_attributes(edges):
         graph.add_edges_from(edges)
     except ValueError:
         pytest.fail("ValueError raised for an existing node.")
+
+
+def test_get_node_by_attributes_errors():
+    graph = test_graph_with_two_nodes()
+    with pytest.raises(AttributeError):
+        graph.get_node_by_attributes(
+            dict_conditions={
+                'type': 'production',
+                'production': 1,
+                'unit': 'kg'
+            }
+        )
+        graph.get_node_by_attributes(
+            dict_conditions={
+                'type': 'production',
+                'production': 1,
+                'unit': 'kg',
+                'non_existent_attr': 'value'
+            }
+        )
+
+def test_get_node_by_attributes_valid():
+    graph = test_graph_with_two_nodes()
+    assert graph.get_node_by_attributes(
+        dict_conditions={
+            'name': 'process 1',
+            'type': 'production',
+            'production': 1,
+            'unit': 'kg'
+        }
+    ) == 'existing_node_1'
+    assert graph.get_node_by_attributes(
+        dict_conditions={
+            'name': 'process 2',
+            'type': 'production',
+        },
+        production=1,
+        unit='kg'
+    ) == 'existing_node_2'
+
+    
+def test_get_random_node():
+    """
+    Test the get_random_node method of GreenMultiDiGraph.
+
+    Tests the method by:
+    1. Creating a graph with two nodes.
+    2. Calling get_random_node.
+    3. Asserting that the returned node is one of the existing nodes.
+    """
+    graph = test_graph_with_two_nodes()
+    random_node = graph.get_random_node()
+    
+    assert random_node in ['existing_node_1', 'existing_node_2']
