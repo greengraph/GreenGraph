@@ -1,10 +1,8 @@
 # %%
 
 import pytest
-
-from tests.fixtures.matrices import (
-    A_S,
-)
+import xarray as xr
+import numpy as np
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -14,16 +12,19 @@ from greengraph.math.matrix import (
     calculate_impact_matrix,
 )
 
-import xarray as xr
-import uuid
-import numpy as np
+A = np.array([
+     # 1  # 2  # 3 
+    [0.0, 0.0, 0.0], # 1
+    [0.3, 0.0, 0.0], # 2
+    [0.0, 0.2, 0.0], # 3
+])
 
-A = xr.DataArray(
-    data=A_S,
+A_labeled = xr.DataArray(
+    data=A,
     dims=('rows','cols'),
     coords={
-        'rows': [str(uuid.uuid4()) for _ in range(A_S.shape[0])],
-        'cols': [str(uuid.uuid4()) for _ in range(A_S.shape[0])]
+        'rows': ['process 1', 'process 2', 'process 3'],
+        'cols': ['process 1', 'process 2', 'process 3']
     }
 )
 
@@ -36,61 +37,23 @@ Q_S = np.array([
     [-2.0, -13.2]
 ])
 
-# %%
-
 x = calculate_production_vector(
-    A=A,
+    A=A_labeled,
     demand={
-        A.coords['rows'][0].item(): 1.0,
-        A.coords['rows'][1].item(): 2.0,
+        'process 1': 1.0,
     }
 )
 
 # %%
 
-B = xr.DataArray(
-    data=B_S,
-    dims=('rows','cols'),
-    coords={
-        'rows': ['sat1', 'sat2'],
-        'cols': A['rows'].values
-    }
-)
-
-g = calculate_inventory_vector(
-    x=x,
-    B=B
-)
-
-
-Q = xr.DataArray(
-    data=Q_S,
-    dims=('rows','cols'),
-    coords={
-        'rows': ['impact1'],
-        'cols': B['rows'].values
-    }
-)
-
-h = calculate_impact_vector(
-    g=g,
-    Q=Q
-)
-
-
-# %%
-
-g_matrix = calculate_inventory_matrix(
-    x=x,
-    inventory_split={
-        'system1': [A.coords['rows'][0].item(), A.coords['rows'][1].item()],
-        'system2': [A.coords['rows'][2].item(), A.coords['rows'][3].item()]
-    },
-    B=B
-)
-
-
-h_matrix = calculate_impact_matrix(
-    g_matrix=g_matrix,
-    Q=Q
-)
+def test_calculate_production_vector():
+    x = calculate_production_vector(
+        A=A_labeled,
+        demand={
+            'process 1': 1.0,
+        }
+    )
+    assert isinstance(x, xr.DataArray)
+    assert x.dims == ('rows',)
+    assert set(x.coords['rows'].values) == {'process 1', 'process 2', 'process 3'}
+    assert np.allclose(x.values, [1.0, 0.3*1.0, 0.3*0.2*1.0])

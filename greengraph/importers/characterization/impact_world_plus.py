@@ -443,4 +443,3 @@ def generate_iwp_characterization_matrix_ecoinvent_and_exiobase(
         )
 
     return df_both
-# %%
