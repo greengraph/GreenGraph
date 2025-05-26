@@ -61,7 +61,7 @@ def _generate_matrices_from_graph(
         if len(B_sort_attributes) == 0:
             lambdafunction_sort_keys = lambda node: node
         else:
-            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
+            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in B_sort_attributes)
         list_sorted_uuids_B = sorted(
             [node for node, attr in G.nodes(data=True) if attr['type'] == 'extension'],
             key=lambdafunction_sort_keys
@@ -94,7 +94,7 @@ def _generate_matrices_from_graph(
         if len(Q_sort_attributes) == 0:
             lambdafunction_sort_keys = lambda node: node
         else:
-            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in sort_keys)
+            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in Q_sort_attributes)
         list_sorted_uuids_Q = sorted(
             [node for node, attr in G.nodes(data=True) if attr['type'] == 'indicator'],
             key=lambdafunction_sort_keys
@@ -125,23 +125,3 @@ def _generate_matrices_from_graph(
         'Bnorm': Bnorm,
         'Q': Q
     }
-
-# %%
-
-from greengraph.importers.databases.inputoutput import useeio
-from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
-dct = useeio.load_useeio_data_from_zenodo(version='2.0.1-411')
-G = graph_system_from_input_output_matrices(
-    name_system='useeio',
-    assign_new_uuids=True,
-    str_extension_nodes_uuid='name',
-    str_production_nodes_uuid='name',
-    str_indicator_nodes_uuid='name',
-    matrix_convention='I-A',
-    array_production=dct['A'].to_numpy(),
-    array_extension=dct['B'].to_numpy(),
-    array_indicator=dct['C'].to_numpy(),
-    list_dicts_production_node_metadata=dct['dicts_A_metadata'],
-    list_dicts_extension_node_metadata=dct['dicts_B_metadata'],
-    list_dicts_indicator_node_metadata=dct['dicts_C_metadata'],
-)
