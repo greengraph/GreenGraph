@@ -71,15 +71,18 @@ def calculate_production_vector(
         Production vector $\vec{x}$.  
         $\text{dim}(\vec{x})=[N \times 1]$
     """
+    if not isinstance(A, xr.DataArray):
+        raise TypeError("A.data must be a numpy array.")
+    
     f = np.zeros(A.data.shape[0])
 
     for node, value in demand.items():
         if np.isin(node, A.coords['rows'].values):
             f[A.coords['rows'].values == node] = value
         else:
-            raise ValueError(f"Node {node} not present in technosphere matrix.")
-    if not isinstance(A.data, np.ndarray):
-        raise TypeError("A.data must be a numpy array.")
+            raise ValueError(f"Node {node} not present in production matrix.")
+    if set(demand.values()) == {0} or set(demand.values()) == {0.0}:
+        raise ValueError("Demand vector must not be all zeros.")
     
     if sp.sparse.issparse(A.data):
         with logtimer("calculating production vector."):
