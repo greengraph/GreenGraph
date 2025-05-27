@@ -1,4 +1,6 @@
+# %%
 import pytest
+from numpy.testing import assert_array_almost_equal
 
 from greengraph.math.conversion import (
     _generate_matrices_from_graph,
@@ -13,7 +15,7 @@ def test_generate_matrices_from_graph_A_and_B(example_graph_system_from_input_ou
     Test the _generate_matrices_from_graph function with a simple example graph.
     """
     generated_matrices = _generate_matrices_from_graph(
-        example_graph_system_from_input_output_matrices['graph'],
+        G=example_graph_system_from_input_output_matrices['graph'],
         matrixformat='dense',
         generate_A=True,
         generate_B=True,
@@ -22,8 +24,8 @@ def test_generate_matrices_from_graph_A_and_B(example_graph_system_from_input_ou
         B_sort_attributes=['index'],
     )
 
-    assert generated_matrices['A'] == example_graph_system_from_input_output_matrices['A']
-    assert generated_matrices['B'] == example_graph_system_from_input_output_matrices['B']
+    assert_array_almost_equal(generated_matrices['A'], example_graph_system_from_input_output_matrices['A'])
+    assert_array_almost_equal(generated_matrices['B'], example_graph_system_from_input_output_matrices['B'])
     assert generated_matrices['Q'] is None
 
 
@@ -42,6 +44,6 @@ def test_generate_matrices_from_graph_A_and_B_and_Q(example_graph_system_from_in
         Q_sort_attributes=['index'],
     )
 
-    assert generated_matrices['A'] == example_graph_system_from_input_output_matrices['A']
-    assert generated_matrices['B'] == example_graph_system_from_input_output_matrices['B']
-    assert generated_matrices['Q'] == example_graph_system_from_input_output_matrices['C']
+    assert_array_almost_equal(generated_matrices['A'], example_graph_system_from_input_output_matrices['A'])
+    assert_array_almost_equal(generated_matrices['B'], example_graph_system_from_input_output_matrices['B'])
+    assert_array_almost_equal(generated_matrices['Q'], example_graph_system_from_input_output_matrices['C'])

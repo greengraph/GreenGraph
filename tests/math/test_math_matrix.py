@@ -68,9 +68,6 @@ g = calculate_inventory_vector(
 )
 
 
-
-# %%
-
 def test_calculate_production_vector():
     x = calculate_production_vector(
         A=A_labeled,
@@ -137,3 +134,4 @@ def test_calculate_impact_vector():
             (-11.1*(((1.0*0.3*1.5)+(1.0*0.3*0.2*2.5))) + (-22.2*((1.0*3.5)+(1.0*0.3*4.5))))
         ]
     )
+    return h

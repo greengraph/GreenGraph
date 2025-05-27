@@ -93,9 +93,9 @@ def calculate_production_vector(
 
     x = xr.DataArray(
         x,
-        dims='rows',
+        dims='processes',
         coords={
-            'rows': A.coords['rows'].values,
+            'processes': A.coords['rows'].values,
         }
     )
 
@@ -170,9 +170,9 @@ def calculate_inventory_vector(
 
     g = xr.DataArray(
         data=B.data @ x.data,
-        dims='rows',
+        dims='extensions',
         coords={
-            'rows': B.coords['rows'].values,
+            'extensions': B.coords['rows'].values,
         }
     )
 
@@ -238,9 +238,9 @@ def calculate_impact_vector(
 
     h = xr.DataArray(
         data=Q.data @ g.data,
-        dims='rows',
+        dims='indicators',
         coords={
-            'rows': Q.coords[Q.dims[0]],
+            'indicators': Q.coords[Q.dims[0]],
         }
     )
 

@@ -3,6 +3,7 @@ from greengraph.utility.logging import logtimer
 import networkx as nx
 import numpy as np
 import xarray as xr
+from typing import Optional
 
 
 def _generate_matrices_from_graph(
@@ -11,9 +12,9 @@ def _generate_matrices_from_graph(
     generate_A: bool,
     generate_B: bool,
     generate_Q: bool,
-    A_sort_attributes: list[str] = [],
-    B_sort_attributes: list[str] = [],
-    Q_sort_attributes: list[str] = [],
+    A_sort_attributes: Optional[list[str]] = None,
+    B_sort_attributes: Optional[list[str]] = None,
+    Q_sort_attributes: Optional[list[str]] = None,
 ) -> dict:
     """
     Generate matrices.......
@@ -23,7 +24,7 @@ def _generate_matrices_from_graph(
     if generate_B == False and generate_Q == True:
         raise ValueError("B must be True if Q is True.")
 
-    if len(A_sort_attributes) == 0:
+    if A_sort_attributes is None:
         lambdafunction_sort_keys = lambda node: node
     else:
         lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in A_sort_attributes)
@@ -32,33 +33,38 @@ def _generate_matrices_from_graph(
         key=lambdafunction_sort_keys
     )
 
-    with logtimer("Generating technosphere matrix."):
+    with logtimer("Generating production matrix."):
         A = nx.algorithms.bipartite.biadjacency_matrix(
             G,
             row_order=list_sorted_uuids_A,
             column_order=list_sorted_uuids_A,
             dtype=float,
-            weight='flow',
+            weight='amount',
             format=matrixformat
         )
         A = xr.DataArray(
             A,
-            dims=('rows', 'cols'),
+            dims=('production nodes (rows)', 'production nodes (cols)'),
             coords={
-                'rows': list_sorted_uuids_A,
-                'cols': list_sorted_uuids_A,
+                'production nodes (rows)': list_sorted_uuids_A,
+                'production nodes (cols)': list_sorted_uuids_A,
             },
         )
 
-    with logtimer("Normalizing technosphere matrix ('I-A'-convention)."):
-        array_production = np.array([G.nodes[node]['production'] for node in A.coords['rows'].values])
+    with logtimer("Normalizing production matrix ('I-A'-convention)."):
+        array_production = np.array([G.nodes[node]['production'] for node in A.coords['production nodes (rows)'].values])
         Anorm = A / array_production
 
     if generate_B == False:
-        B = None
-        Bnorm = None
+        return {
+        'A': A,
+        'Anorm': Anorm,
+        'B': None,
+        'Bnorm': None,
+        'Q': None
+    }
     else:
-        if len(B_sort_attributes) == 0:
+        if B_sort_attributes is None:
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in B_sort_attributes)
@@ -73,15 +79,15 @@ def _generate_matrices_from_graph(
                 row_order=list_sorted_uuids_B,
                 column_order=list_sorted_uuids_A,
                 dtype=float,
-                weight='flow',
+                weight='amount',
                 format='dense'
             )
             B = xr.DataArray(
                 B,
-                dims=('rows', 'cols'),
+                dims=('extension nodes (rows)', 'production nodes (cols)'),
                 coords={
-                    'rows': list_sorted_uuids_B,
-                    'cols': list_sorted_uuids_A,
+                    'extension nodes (rows)': list_sorted_uuids_B,
+                    'production nodes (cols)': list_sorted_uuids_A,
                 },
             )
 
@@ -89,9 +95,15 @@ def _generate_matrices_from_graph(
             Bnorm = B / array_production
 
     if generate_Q == False:
-        Q = None
+        return {
+        'A': A,
+        'Anorm': Anorm,
+        'B': B,
+        'Bnorm': Bnorm,
+        'Q': None
+    }
     else:
-        if len(Q_sort_attributes) == 0:
+        if Q_sort_attributes is None:
             lambdafunction_sort_keys = lambda node: node
         else:
             lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in Q_sort_attributes)
@@ -106,15 +118,15 @@ def _generate_matrices_from_graph(
                 row_order=list_sorted_uuids_Q,
                 column_order=list_sorted_uuids_B,
                 dtype=float,
-                weight='flow',
+                weight='weight',
                 format='dense'
             )
             Q = xr.DataArray(
                 Q,
-                dims=('rows', 'cols'),
+                dims=('indicator nodes (rows)', 'extension nodes (cols)'),
                 coords={
-                    'rows': list_sorted_uuids_Q,
-                    'cols': list_sorted_uuids_B,
+                    'indicator nodes (rows)': list_sorted_uuids_Q,
+                    'extension nodes (cols)': list_sorted_uuids_B,
                 },
             )
 

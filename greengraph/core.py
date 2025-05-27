@@ -595,7 +595,7 @@ class GreenMatrixContainer():
     def lca(
         self,
         demand: dict[str, float],
-    ) -> xr.DataArray:
+    ) -> None:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
         """
@@ -607,13 +607,12 @@ class GreenMatrixContainer():
             x=x,
             B=self.matrices['B']
         )
-        return g
+        self.matrices['g'] = g
 
 
     def lcia(
         self,
-        g: xr.DataArray,
-    ) -> xr.DataArray:
+    ) -> None:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
 
@@ -634,11 +633,13 @@ class GreenMatrixContainer():
         ----------
         
         """
-        
+        if 'g' not in self.matrices:
+            raise ValueError("The inventory problem of the supply-chain graph must first be solved using the `lca()` method.")
+
         h = calculate_impact_vector(
-            g=g,
+            g=self.matrices['g'],
             Q=self.matrices['Q']
         )
-        return h
+        self.matrices['h'] = h
 # %%
 

@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 @contextmanager
-def logtimer(message):
+def logtimer(message: str):
     start_time = datetime.now()
     logging.info(f"{start_time.strftime('%H:%M:%S')}: Started {message}")
     
