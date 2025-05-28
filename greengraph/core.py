@@ -9,12 +9,122 @@ import xarray as xr
 import importlib.metadata
 import random
 from typing import Optional, Any
+import pandas as pd
+from greengraph.utility.logging import logtimer
 
 from greengraph.math.matrix import (
     calculate_production_vector,
     calculate_inventory_vector,
     calculate_impact_vector
 )
+
+
+class GreenMatrixContainer():
+    """
+    GreenGraph class to manage matrices (technosphere, biosphere, characterization, etc.) generated from the graph.
+
+    Attributes
+    ----------
+    matrices : dict
+        A dictionary to store matrices generated from the graph.  
+        Note that each matrix is stored as a [`xarray.DataArray`](https://docs.xarray.dev/en/latest/generated/xarray.DataArray.html#xarray.DataArray) object.
+    metadata : dict
+        A dictionary to store metadata about the class instance.  
+        By default, the metadata dictionary contains:  
+        - `created`: Timestamp of class instance creation.  
+
+    Methods
+    -------
+    lca()
+        Computes the life cycle assessment (LCA) of the graph.
+    lcia()
+        Computes the life cycle impact assessment (LCIA) of the graph.
+
+    See Also
+    --------
+    [`xarray.DataArray`](https://docs.xarray.dev/en/latest/user-guide/data-structures.html)
+    """
+    def __init__(
+        self,
+        matrices: Optional[dict[str, xr.DataArray]] = None,
+        nodes: Optional[dict[str, Any]] = None,
+    ):
+        self.metadata = {
+            'created': datetime.now(),
+            'greengraph': importlib.metadata.version('greengraph')
+        }
+        if matrices is None:
+            self.matrices = {}
+        else:
+            self.matrices = matrices
+        if nodes is None:
+            self.nodes = {}
+        else:
+            self.nodes = nodes
+        
+
+    def lca(
+        self,
+        demand: dict[str, float],
+        format: str = 'xarray'
+    ) -> None:
+        r"""
+        Computes the life cycle assessment (LCA) of the graph.
+        """
+        x = calculate_production_vector(
+            A=self.matrices['A'],
+            demand=demand
+        )
+        g = calculate_inventory_vector(
+            x=x,
+            B=self.matrices['B']
+        )
+        if format == 'xarray':
+            return g
+        elif format == 'dataframe':
+            return pd.DataFrame(
+                [
+                    {**G.nodes[node], 'amount': M.matrices['h'].sel({'indicator nodes': node}).item()}
+                    for node in M.matrices['h'].coords['indicator nodes'].values
+                ]
+            )
+        else:
+            raise ValueError(f"Unknown format '{format}'. Supported formats are 'xarray' and 'dataframe'.")
+
+
+    def lcia(
+        self,
+    ) -> None:
+        r"""
+        Computes the life cycle assessment (LCA) of the graph.
+
+        $$
+        \mathbf{h} = \mathbf{Q} \cdot (\mathbf{I} - \mathbf{A})^{-1} \cdot \mathbf{f}
+        $$
+
+        Notes
+        -----
+        This function can be called directly. 
+        There is no need to call the [`greengraph.core.GreenGraphMatrixContainer.lca`][] function first.
+
+        Warnings
+        --------
+        Note that the production vector is computed using the $(\mathbf{I-A})^{-1}$ convention
+
+        References
+        ----------
+        
+        """
+        if 'g' not in self.matrices:
+            raise ValueError("The inventory problem of the supply-chain graph must first be solved using the `lca()` method.")
+
+        h = calculate_impact_vector(
+            g=self.matrices['g'],
+            Q=self.matrices['Q']
+        )
+        self.matrices['h'] = h
+
+
 
 class GreenMultiDiGraph(nx.MultiDiGraph):
     r"""
@@ -387,7 +497,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         dict_attr: Optional[dict] = None,
         validate: bool = True,
         **attr
-    ) -> None:
+    ) -> str:
         """
 
 
@@ -419,7 +529,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         ebunch_to_add,
         validate: bool = True,
         **attr
-    ) -> None:
+    ) -> list:
         """
         Warnings
         --------
@@ -460,7 +570,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
     def get_node_by_attributes(
         self,
-        dict_conditions: dict,
+        dict_conditions: Optional[dict] = None,
         data: bool = False,
         **cond: dict,
     ) -> tuple[Any] | Any:
@@ -506,7 +616,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         str
             The node (=UUID string) that matches the conditions.
         """
-        dict_combined_conditions = {**cond, **dict_conditions}
+        dict_combined_conditions = {**cond, **(dict_conditions if dict_conditions is not None else {})}
 
         def _condition_met(attrs: dict):
             return all(key in attrs and attrs[key] == value for key, value in dict_combined_conditions.items())
@@ -525,7 +635,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         self,
         type: Optional[str] = None,
         data: bool = False,
-    ) -> str:
+    ) -> str | tuple[str, dict[str, Any]]:
         r"""
         Returns a random node from the graph.
 
@@ -549,97 +659,149 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         """
         if len(self.nodes()) == 0:
             raise AttributeError("The graph is empty. No nodes to return.")
+        if type is None:
+            list_nodes = list(self.nodes())
         if type is not None:
-            list_nodes = [node for node, attrs in self.nodes(data=data) if attrs['type'] == type]
+            list_nodes = [node for node, attrs in self.nodes(data=True) if attrs['type'] == type]
             if len(list_nodes) == 0:
                 raise AttributeError(f"No nodes found with the given type '{type}'.")
-            return random.choice(list_nodes)
-        
-        return random.choice(list(self.nodes()))
-    
-
-
-class GreenMatrixContainer():
+        node_random = random.choice(list_nodes)
+        if data is True:
+            return (node_random, self.nodes[node_random])
+        if data is False:
+            return node_random
+            
     """
-    GreenGraph class to manage matrices (technosphere, biosphere, characterization, etc.) generated from the graph.
+    def generate_matrices(
+        self,
+        matrixformat: str,
+        generate_A: bool,
+        generate_B: bool,
+        generate_Q: bool,
+        A_sort_attributes: Optional[list[str]] = None,
+        B_sort_attributes: Optional[list[str]] = None,
+        Q_sort_attributes: Optional[list[str]] = None,
+    ) -> GreenMatrixContainer:
+        if generate_A == False:
+            raise ValueError("A must be True.")
+        if generate_B == False and generate_Q == True:
+            raise ValueError("B must be True if Q is True.")
 
-    Attributes
-    ----------
-    matrices : dict
-        A dictionary to store matrices generated from the graph.  
-        Note that each matrix is stored as a [`xarray.DataArray`](https://docs.xarray.dev/en/latest/generated/xarray.DataArray.html#xarray.DataArray) object.
-    metadata : dict
-        A dictionary to store metadata about the class instance.  
-        By default, the metadata dictionary contains:  
-        - `created`: Timestamp of class instance creation.  
+        if A_sort_attributes is None:
+            lambdafunction_sort_keys = lambda node: node
+        else:
+            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in A_sort_attributes)
+        list_sorted_uuids_A = sorted(
+            [node for node, attr in G.nodes(data=True) if attr['type'] == 'production'],
+            key=lambdafunction_sort_keys
+        )
 
-    Methods
-    -------
-    lca()
-        Computes the life cycle assessment (LCA) of the graph.
-    lcia()
-        Computes the life cycle impact assessment (LCIA) of the graph.
+        with logtimer("Generating production matrix."):
+            A = nx.algorithms.bipartite.biadjacency_matrix(
+                G,
+                row_order=list_sorted_uuids_A,
+                column_order=list_sorted_uuids_A,
+                dtype=float,
+                weight='amount',
+                format=matrixformat
+            )
+            A = xr.DataArray(
+                A,
+                dims=('production nodes (rows)', 'production nodes (cols)'),
+                coords={
+                    'production nodes (rows)': list_sorted_uuids_A,
+                    'production nodes (cols)': list_sorted_uuids_A,
+                },
+            )
 
-    See Also
-    --------
-    [`xarray.DataArray`](https://docs.xarray.dev/en/latest/user-guide/data-structures.html)
-    """
-    def __init__(self):
-        self.matrices = {}
-        self.metadata = {
-            'created': datetime.now(),
-            'greengraph': importlib.metadata.version('greengraph')
+        with logtimer("Normalizing production matrix ('I-A'-convention)."):
+            array_production = np.array([G.nodes[node]['production'] for node in A.coords['production nodes (rows)'].values])
+            Anorm = A / array_production
+
+        if generate_B == False:
+            return GreenMatrixContainer(
+                matrices={
+                    'A': A,
+                    'Anorm': Anorm,
+                    'B': None,
+                    'Bnorm': None,
+                    'Q': None
+                }
+            )
+        else:
+            if B_sort_attributes is None:
+                lambdafunction_sort_keys = lambda node: node
+            else:
+                lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in B_sort_attributes)
+            list_sorted_uuids_B = sorted(
+                [node for node, attr in G.nodes(data=True) if attr['type'] == 'extension'],
+                key=lambdafunction_sort_keys
+            )
+
+            with logtimer("Generating biosphere matrix."):
+                B = nx.algorithms.bipartite.biadjacency_matrix(
+                    G,
+                    row_order=list_sorted_uuids_B,
+                    column_order=list_sorted_uuids_A,
+                    dtype=float,
+                    weight='amount',
+                    format='dense'
+                )
+                B = xr.DataArray(
+                    B,
+                    dims=('extension nodes (rows)', 'production nodes (cols)'),
+                    coords={
+                        'extension nodes (rows)': list_sorted_uuids_B,
+                        'production nodes (cols)': list_sorted_uuids_A,
+                    },
+                )
+
+            with logtimer("Normalizing biosphere matrix ('I-B'-convention)."):
+                Bnorm = B / array_production
+
+        if generate_Q == False:
+            return {
+            'A': A,
+            'Anorm': Anorm,
+            'B': B,
+            'Bnorm': Bnorm,
+            'Q': None
         }
+        else:
+            if Q_sort_attributes is None:
+                lambdafunction_sort_keys = lambda node: node
+            else:
+                lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in Q_sort_attributes)
+            list_sorted_uuids_Q = sorted(
+                [node for node, attr in G.nodes(data=True) if attr['type'] == 'indicator'],
+                key=lambdafunction_sort_keys
+            )
 
+            with logtimer("Generating characterization matrix."):
+                Q = nx.algorithms.bipartite.biadjacency_matrix(
+                    G,
+                    row_order=list_sorted_uuids_Q,
+                    column_order=list_sorted_uuids_B,
+                    dtype=float,
+                    weight='weight',
+                    format='dense'
+                )
+                Q = xr.DataArray(
+                    Q,
+                    dims=('indicator nodes (rows)', 'extension nodes (cols)'),
+                    coords={
+                        'indicator nodes (rows)': list_sorted_uuids_Q,
+                        'extension nodes (cols)': list_sorted_uuids_B,
+                    },
+                )
 
-    def lca(
-        self,
-        demand: dict[str, float],
-    ) -> None:
-        r"""
-        Computes the life cycle assessment (LCA) of the graph.
-        """
-        x = calculate_production_vector(
-            A=self.matrices['A'],
-            demand=demand
-        )
-        g = calculate_inventory_vector(
-            x=x,
-            B=self.matrices['B']
-        )
-        self.matrices['g'] = g
-
-
-    def lcia(
-        self,
-    ) -> None:
-        r"""
-        Computes the life cycle assessment (LCA) of the graph.
-
-        $$
-        \mathbf{h} = \mathbf{Q} \cdot (\mathbf{I} - \mathbf{A})^{-1} \cdot \mathbf{f}
-        $$
-
-        Notes
-        -----
-        This function can be called directly. 
-        There is no need to call the [`greengraph.core.GreenGraphMatrixContainer.lca`][] function first.
-
-        Warnings
-        --------
-        Note that the production vector is computed using the $(\mathbf{I-A})^{-1}$ convention
-
-        References
-        ----------
+        return {
+            'A': A,
+            'Anorm': Anorm,
+            'B': B,
+            'Bnorm': Bnorm,
+            'Q': Q
+        }
+    """
         
-        """
-        if 'g' not in self.matrices:
-            raise ValueError("The inventory problem of the supply-chain graph must first be solved using the `lca()` method.")
-
-        h = calculate_impact_vector(
-            g=self.matrices['g'],
-            Q=self.matrices['Q']
-        )
-        self.matrices['h'] = h
-# %%
 

@@ -21,10 +21,10 @@ A = np.array([
 
 A_labeled = xr.DataArray(
     data=A,
-    dims=('rows','cols'),
+    dims=('production nodes (rows)','production nodes (cols)'),
     coords={
-        'rows': ['process 1', 'process 2', 'process 3'],
-        'cols': ['process 1', 'process 2', 'process 3']
+        'production nodes (rows)': ['process 1', 'process 2', 'process 3'],
+        'production nodes (cols)': ['process 1', 'process 2', 'process 3']
     }
 )
 
@@ -36,10 +36,10 @@ B = np.array([
 
 B_labeled = xr.DataArray(
     data=B,
-    dims=('rows','cols'),
+    dims=('extension nodes (rows)','production nodes (cols)'),
     coords={
-        'rows': ['emission alpha', 'emission beta'],
-        'cols': ['process 1', 'process 2', 'process 3']
+        'extension nodes (rows)': ['emission alpha', 'emission beta'],
+        'production nodes (cols)': ['process 1', 'process 2', 'process 3']
     }
 )
 
@@ -48,10 +48,10 @@ Q = np.array([
 ])
 Q_labeled = xr.DataArray(
     data=Q,
-    dims=('rows', 'cols'),
+    dims=('indicator nodes (rows)', 'extension nodes (cols)'),
     coords={
-        'rows': ['indicator 1'],
-        'cols': ['emission alpha', 'emission beta']
+        'indicator nodes (rows)': ['indicator 1'],
+        'extension nodes (cols)': ['emission alpha', 'emission beta']
     }
 )
 
@@ -76,8 +76,8 @@ def test_calculate_production_vector():
         }
     )
     assert isinstance(x, xr.DataArray)
-    assert x.dims == ('rows',)
-    assert set(x.coords['rows'].values) == {'process 1', 'process 2', 'process 3'}
+    assert x.dims == ('production nodes',)
+    assert set(x.coords['production nodes'].values) == {'process 1', 'process 2', 'process 3'}
     assert np.allclose(
         x.values,
         [
@@ -108,8 +108,8 @@ def test_calculate_inventory_vector():
         B=B_labeled,
     )
     assert isinstance(g, xr.DataArray)
-    assert g.dims == ('rows',)
-    assert set(g.coords['rows'].values) == {'emission alpha', 'emission beta'}
+    assert g.dims == ('extension nodes',)
+    assert set(g.coords['extension nodes'].values) == {'emission alpha', 'emission beta'}
     assert np.allclose(
         g.values,
         [
@@ -126,8 +126,8 @@ def test_calculate_impact_vector():
         Q=Q_labeled,
     )
     assert isinstance(h, xr.DataArray)
-    assert h.dims == ('rows',)
-    assert set(h.coords['rows'].values) == {'indicator 1'}
+    assert h.dims == ('indicator nodes',)
+    assert set(h.coords['indicator nodes'].values) == {'indicator 1'}
     assert np.allclose(
         h.values,
         [

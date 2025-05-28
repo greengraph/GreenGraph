@@ -77,8 +77,8 @@ def calculate_production_vector(
     f = np.zeros(A.data.shape[0])
 
     for node, value in demand.items():
-        if np.isin(node, A.coords['rows'].values):
-            f[A.coords['rows'].values == node] = value
+        if np.isin(node, A.coords['production nodes (rows)'].values):
+            f[A.coords['production nodes (rows)'].values == node] = value
         else:
             raise ValueError(f"Node {node} not present in production matrix.")
     if set(demand.values()) == {0} or set(demand.values()) == {0.0}:
@@ -93,9 +93,9 @@ def calculate_production_vector(
 
     x = xr.DataArray(
         x,
-        dims='processes',
+        dims='production nodes',
         coords={
-            'processes': A.coords['rows'].values,
+            'production nodes': A.coords['production nodes (rows)'].values,
         }
     )
 
@@ -165,16 +165,17 @@ def calculate_inventory_vector(
         raise TypeError("x.data must be a numpy array.")
     if not isinstance(B.data, np.ndarray):
         raise TypeError("B.data must be a numpy array.")
-    if not np.array_equal(B.coords['cols'].values, x.coords['rows'].values):
+    if not np.array_equal(B.coords['production nodes (cols)'].values, x.coords['production nodes'].values):
         raise ValueError("Columns of B and rows of x do not align!")
 
-    g = xr.DataArray(
-        data=B.data @ x.data,
-        dims='extensions',
-        coords={
-            'extensions': B.coords['rows'].values,
-        }
-    )
+    with logtimer("calculating inventory vector."):
+        g = xr.DataArray(
+            data=B.data @ x.data,
+            dims='extension nodes',
+            coords={
+                'extension nodes': B.coords['extension nodes (rows)'].values,
+            }
+        )
 
     return g
 
@@ -233,16 +234,17 @@ def calculate_impact_vector(
         raise TypeError("g.data must be a numpy array.")
     if not isinstance(Q.data, np.ndarray):
         raise TypeError("Q.data must be a numpy array.")
-    if not np.array_equal(Q.coords['cols'].values, g.coords['rows'].values):
+    if not np.array_equal(Q.coords['extension nodes (cols)'].values, g.coords['extension nodes'].values):
         raise ValueError("Rows of Q and rows of g do not align!")
 
-    h = xr.DataArray(
-        data=Q.data @ g.data,
-        dims='indicators',
-        coords={
-            'indicators': Q.coords[Q.dims[0]],
-        }
-    )
+    with logtimer("calculating impact vector."):
+        h = xr.DataArray(
+            data=Q.data @ g.data,
+            dims='indicator nodes',
+            coords={
+                'indicator nodes': Q.coords['indicator nodes (rows)'].values,
+            }
+        )
 
     return h
 

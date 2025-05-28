@@ -21,6 +21,7 @@ nav:
     - Core: 'api/core.md'
     - Math: 
       - Matrix: 'api/math/matrix.md'
+      - Conversion: 'api/math/conversion.md'
     - Import:
       - Databases:
         - Generic: 'api/importers/databases/generic.md'

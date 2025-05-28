@@ -4,7 +4,7 @@ import numpy as np
 
 from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def example_graph_system_from_input_output_matrices():
     """
     Example of how to create a graph system from input-output matrices.
