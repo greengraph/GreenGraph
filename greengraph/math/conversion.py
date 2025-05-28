@@ -10,6 +10,7 @@ def generate_matrix_from_graph(
     G: nx.MultiDiGraph,
     matrixformat: str,
     name_matrix: str,
+    normalize_matrix_by_production: bool,
     adjacency_amount_attribute: str,
     adjacency_dtype: Optional[Union[Type[np.generic], np.dtype, str]],
     name_coordinate_rows: str,
@@ -25,31 +26,35 @@ def generate_matrix_from_graph(
 
     Notes
     -----
-    The `lambdafunction_sort_keys` lambda functions are used to sort the nodes based on the specified attributes.
+    To normalize the matrix by the production amount of the nodes,
+    we divide each flow $i \rightarrow j$ by the production amount of the node $i$.
 
-    For example, if graph `G` has nodes with attributes:
+    For a matrix $\mathbf{A}$:
 
-    ```python
-    >>> [(node, attr) for node, attr in G.nodes(data=True)]
-    [
-        ('node1', {'type': 'production', 'name': 'process 22', 'production': 1.0}),
-        ('node2', {'type': 'production', 'name': 'process 11', 'production': 2.0}),
-    ]
-    ```
+    $$
+    \mathbf{A} = \begin{pmatrix}{c}
+        a_{11} & a_{12} \\
+        a_{21} & a_{22}
+    \end{pmatrix}
+    $$
 
-    For sort keys `['name', 'production']` the lambda function will return for `node1`:
-    
-    ```python
-    ('process 22', 1.0)
-    ```
+    and a vector $\vec{p}$ of production amounts:
 
-    and for `node2`:
+    $$
+    \vec{p} = \begin{pmatrix}{c}
+        x_1 \\
+        x_2
+    \end{pmatrix}
+    $$
 
-    ```python
-    ('process 11', 2.0)
-    ```
+    the normalized matrix $\mathbf{A}_{norm}$ is therefore:
 
-    For sort keys `None`, the lambda function will return the node itself, e.g. `node1` and `node2`.
+    $$
+    \mathbf{A} = \begin{pmatrix}{c}
+        a_{11} / x_1 & a_{12} / x_1 \\
+        a_{21} / x_2 & a_{22} / x_2
+    \end{pmatrix}
+    $$
 
     See Also
     --------
@@ -126,6 +131,35 @@ def generate_matrix_from_graph(
         list_nodes_cols,
         key=lambdafunction_sort_keys_cols
     )
+    """
+    The `lambdafunction_sort_keys` lambda functions are used to sort the nodes based on the specified attributes.
+
+    For example, if graph `G` has nodes with attributes:
+
+    ```python
+    >>> [(node, attr) for node, attr in G.nodes(data=True)]
+    [
+        ('node1', {'type': 'production', 'name': 'process 22', 'production': 1.0}),
+        ('node2', {'type': 'production', 'name': 'process 11', 'production': 2.0}),
+    ]
+    ```
+
+    For sort keys `['name', 'production']` the lambda function will return for `node1`:
+    
+    ```python
+    ('process 22', 1.0)
+    ```
+
+    and for `node2`:
+
+    ```python
+    ('process 11', 2.0)
+    ```
+
+    For sort keys `None`, the lambda function will return the node itself, e.g. `node1` and `node2`.
+    """
+
+
     with logtimer(f"Generating {name_matrix} matrix from graph."):
         A = nx.algorithms.bipartite.biadjacency_matrix(
             G,
@@ -143,4 +177,44 @@ def generate_matrix_from_graph(
                 name_coordinate_cols: list_sorted_nodes_cols,
             },
         )
-    return A
+        if normalize_matrix_by_production == True:
+            """
+            Notes
+            -----
+            To divide a matrix (N,N) by a vector (N,) row-wise (=element-wise) using NumPy arrays,
+            we need to reshape the vector to shape (N,1) to enable broadcasting.
+            Numpy will then internally broadcast the vector to shape (N,N) for the division operation.
+
+            Example
+            -------
+            ```python
+            A = np.array([
+                [1, 2],
+                [3, 4]
+            ])
+            A.shape = (2, 2)
+            x = np.array([
+                [10],
+                [-10]
+            ])
+            x.shape = (2, 1)
+            A / x = np.array([
+                [0.1, 0.2],
+                [-0.3, -0.4]
+            ])
+            ```
+            
+            See Also
+            --------
+            [`numpy.divide`](https://numpy.org/doc/stable/reference/generated/numpy.divide.html)
+            [NumPy Broadcasting](https://numpy.org/doc/stable/user/basics.broadcasting.html)
+            """
+            array_production = np.array(
+                [
+                    [G.nodes[node]['production']]
+                    for node in A.coords[name_coordinate_cols].values
+                ]
+            )
+            return A / array_production
+        else:
+            return A

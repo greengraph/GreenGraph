@@ -7,7 +7,8 @@ import zipfile
 from greengraph import APP_CACHE_BASE_DIR
 from greengraph.utility.download import _load_file_from_zenodo_with_caching
 from greengraph.utility.logging import logtimer
-
+from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
+from greengraph.core import GreenMultiDiGraph
 
 class useeio:
     """
@@ -36,7 +37,7 @@ class useeio:
         return useeio._available_versions
     
     @staticmethod
-    def load_useeio_data_from_zenodo(
+    def _load_useeio_data_from_zenodo(
         version: str
     ) -> dict:
         """
@@ -74,10 +75,10 @@ class useeio:
             zenodo_record='15272306',
         )
 
-        return useeio.format_useeio_matrices(path_useeio=path_excel_file['path_cached_file'])
+        return useeio._format_useeio_matrices(path_useeio=path_excel_file['path_cached_file'])
         
     @staticmethod
-    def format_useeio_matrices(
+    def _format_useeio_matrices(
         path_useeio: Path
     ) -> dict:
         r"""
@@ -219,6 +220,50 @@ class useeio:
             'dicts_C_metadata': dicts_C_metadata
         }
     
+
+    @staticmethod
+    def create_graph(
+        version: str = '2.0.1-411'
+    ) -> GreenMultiDiGraph:
+        r"""
+        Creates a GreenMultiDiGraph from the USEEIO dataset for a given version.
+
+        Parameters
+        ----------
+        version : str, optional
+            The version of the USEEIO dataset to use. Must be one of the available versions.
+            See [`greengraph.importers.databases.inputoutput.useeio.list_available_versions`][] for a list of available versions.
+            Default is `2.0.1-411`.
+        
+        Returns
+        -------
+        GreenMultiDiGraph
+            A GreenMultiDiGraph representing the USEEIO dataset for the given version.
+
+        Raises
+        ------
+        ValueError
+            If the version is not available.
+        HTTPError
+            If the request to download the USEEIO data fails.
+        """
+        dict_zenodo_data = useeio._load_useeio_data_from_zenodo(version=version)
+        G = graph_system_from_input_output_matrices(
+            name_system='useeio',
+            assign_new_uuids=True,
+            str_extension_nodes_uuid='name',
+            str_production_nodes_uuid='name',
+            str_indicator_nodes_uuid='name',
+            matrix_convention='I-A',
+            array_production=dict_zenodo_data['A'].to_numpy(),
+            array_extension=dict_zenodo_data['B'].to_numpy(),
+            array_indicator=dict_zenodo_data['C'].to_numpy(),
+            list_dicts_production_node_metadata=dict_zenodo_data['dicts_A_metadata'],
+            list_dicts_extension_node_metadata=dict_zenodo_data['dicts_B_metadata'],
+            list_dicts_indicator_node_metadata=dict_zenodo_data['dicts_C_metadata'],
+        )
+        return G
+
 
 class exiobase:
     """

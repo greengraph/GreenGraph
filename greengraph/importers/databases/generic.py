@@ -3,7 +3,6 @@ This module contains functions to turn properly formatted
 arrays, dataframe, metadata lists, etc. into a greengraph graph.
 """
 
-# %%
 import networkx as nx
 import xarray as xr
 import numpy as np
@@ -27,7 +26,7 @@ def graph_system_from_input_output_matrices(
     list_dicts_production_node_metadata: list[dict],
     list_dicts_extension_node_metadata: list[dict],
     list_dicts_indicator_node_metadata: list[dict] | None,
-) -> nx.MultiDiGraph:
+) -> GreenMultiDiGraph:
     r"""
     Create a MultiDiGraph from technosphere and biosphere matrices.
 

@@ -10,12 +10,16 @@ import importlib.metadata
 import random
 from typing import Optional, Any
 import pandas as pd
+import numpy as np
 from greengraph.utility.logging import logtimer
 
 from greengraph.math.matrix import (
     calculate_production_vector,
     calculate_inventory_vector,
     calculate_impact_vector
+)
+from greengraph.math.conversion import (
+    generate_matrix_from_graph,
 )
 
 
@@ -67,7 +71,7 @@ class GreenMatrixContainer():
         self,
         demand: dict[str, float],
         format: str = 'xarray'
-    ) -> None:
+    ) -> xr.DataArray | pd.DataFrame:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
         """
@@ -84,8 +88,8 @@ class GreenMatrixContainer():
         elif format == 'dataframe':
             return pd.DataFrame(
                 [
-                    {**G.nodes[node], 'amount': M.matrices['h'].sel({'indicator nodes': node}).item()}
-                    for node in M.matrices['h'].coords['indicator nodes'].values
+                    {**self.nodes[node], 'amount': g.sel({'extension nodes': node}).item()}
+                    for node in g.coords['extension nodes'].values
                 ]
             )
         else:
@@ -671,137 +675,81 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         if data is False:
             return node_random
             
-    """
+
     def generate_matrices(
         self,
         matrixformat: str,
-        generate_A: bool,
-        generate_B: bool,
-        generate_Q: bool,
+        generate_A: bool = True,
+        generate_B: bool = True,
+        generate_Q: bool = True,
         A_sort_attributes: Optional[list[str]] = None,
         B_sort_attributes: Optional[list[str]] = None,
         Q_sort_attributes: Optional[list[str]] = None,
     ) -> GreenMatrixContainer:
+        r"""
+        """
         if generate_A == False:
             raise ValueError("A must be True.")
         if generate_B == False and generate_Q == True:
             raise ValueError("B must be True if Q is True.")
 
-        if A_sort_attributes is None:
-            lambdafunction_sort_keys = lambda node: node
-        else:
-            lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in A_sort_attributes)
-        list_sorted_uuids_A = sorted(
-            [node for node, attr in G.nodes(data=True) if attr['type'] == 'production'],
-            key=lambdafunction_sort_keys
+        A = generate_matrix_from_graph(
+            G=self,
+            matrixformat=matrixformat,
+            name_matrix='production',
+            normalize_matrix_by_production=True,
+            adjacency_amount_attribute='amount',
+            adjacency_dtype=float,
+            name_coordinate_rows='production nodes (rows)',
+            name_coordinate_cols='production nodes (cols)',
+            list_nodes_rows=[node for node, attr in self.nodes(data=True) if attr['type'] == 'production'],
+            list_nodes_cols=[node for node, attr in self.nodes(data=True) if attr['type'] == 'production'],
+            sort_attributes_nodes_rows=A_sort_attributes,
+            sort_attributes_nodes_cols=A_sort_attributes
         )
 
-        with logtimer("Generating production matrix."):
-            A = nx.algorithms.bipartite.biadjacency_matrix(
-                G,
-                row_order=list_sorted_uuids_A,
-                column_order=list_sorted_uuids_A,
-                dtype=float,
-                weight='amount',
-                format=matrixformat
-            )
-            A = xr.DataArray(
-                A,
-                dims=('production nodes (rows)', 'production nodes (cols)'),
-                coords={
-                    'production nodes (rows)': list_sorted_uuids_A,
-                    'production nodes (cols)': list_sorted_uuids_A,
-                },
-            )
-
-        with logtimer("Normalizing production matrix ('I-A'-convention)."):
-            array_production = np.array([G.nodes[node]['production'] for node in A.coords['production nodes (rows)'].values])
-            Anorm = A / array_production
-
-        if generate_B == False:
-            return GreenMatrixContainer(
-                matrices={
-                    'A': A,
-                    'Anorm': Anorm,
-                    'B': None,
-                    'Bnorm': None,
-                    'Q': None
-                }
+        if generate_B == True:
+            B = generate_matrix_from_graph(
+                G=self,
+                matrixformat=matrixformat,
+                name_matrix='extension',
+                normalize_matrix_by_production=True,
+                adjacency_amount_attribute='amount',
+                adjacency_dtype=float,
+                name_coordinate_rows='extension nodes (rows)',
+                name_coordinate_cols='production nodes (cols)',
+                list_nodes_rows=[node for node, attr in self.nodes(data=True) if attr['type'] == 'extension'],
+                list_nodes_cols=[node for node, attr in self.nodes(data=True) if attr['type'] == 'production'],
+                sort_attributes_nodes_rows=B_sort_attributes,
+                sort_attributes_nodes_cols=A_sort_attributes
             )
         else:
-            if B_sort_attributes is None:
-                lambdafunction_sort_keys = lambda node: node
-            else:
-                lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in B_sort_attributes)
-            list_sorted_uuids_B = sorted(
-                [node for node, attr in G.nodes(data=True) if attr['type'] == 'extension'],
-                key=lambdafunction_sort_keys
+            B = None
+
+        if generate_Q == True:
+            Q = generate_matrix_from_graph(
+                G=self,
+                matrixformat=matrixformat,
+                name_matrix='indicator',
+                normalize_matrix_by_production=False,
+                adjacency_amount_attribute='weight',
+                adjacency_dtype=float,
+                name_coordinate_rows='indicator nodes (rows)',
+                name_coordinate_cols='extension nodes (cols)',
+                list_nodes_rows=[node for node, attr in self.nodes(data=True) if attr['type'] == 'indicator'],
+                list_nodes_cols=[node for node, attr in self.nodes(data=True) if attr['type'] == 'extension'],
+                sort_attributes_nodes_rows=Q_sort_attributes,
+                sort_attributes_nodes_cols= B_sort_attributes
             )
-
-            with logtimer("Generating biosphere matrix."):
-                B = nx.algorithms.bipartite.biadjacency_matrix(
-                    G,
-                    row_order=list_sorted_uuids_B,
-                    column_order=list_sorted_uuids_A,
-                    dtype=float,
-                    weight='amount',
-                    format='dense'
-                )
-                B = xr.DataArray(
-                    B,
-                    dims=('extension nodes (rows)', 'production nodes (cols)'),
-                    coords={
-                        'extension nodes (rows)': list_sorted_uuids_B,
-                        'production nodes (cols)': list_sorted_uuids_A,
-                    },
-                )
-
-            with logtimer("Normalizing biosphere matrix ('I-B'-convention)."):
-                Bnorm = B / array_production
-
-        if generate_Q == False:
-            return {
-            'A': A,
-            'Anorm': Anorm,
-            'B': B,
-            'Bnorm': Bnorm,
-            'Q': None
-        }
         else:
-            if Q_sort_attributes is None:
-                lambdafunction_sort_keys = lambda node: node
-            else:
-                lambdafunction_sort_keys = lambda node: tuple(G.nodes[node].get(key, None) for key in Q_sort_attributes)
-            list_sorted_uuids_Q = sorted(
-                [node for node, attr in G.nodes(data=True) if attr['type'] == 'indicator'],
-                key=lambdafunction_sort_keys
-            )
+            Q = None
 
-            with logtimer("Generating characterization matrix."):
-                Q = nx.algorithms.bipartite.biadjacency_matrix(
-                    G,
-                    row_order=list_sorted_uuids_Q,
-                    column_order=list_sorted_uuids_B,
-                    dtype=float,
-                    weight='weight',
-                    format='dense'
-                )
-                Q = xr.DataArray(
-                    Q,
-                    dims=('indicator nodes (rows)', 'extension nodes (cols)'),
-                    coords={
-                        'indicator nodes (rows)': list_sorted_uuids_Q,
-                        'extension nodes (cols)': list_sorted_uuids_B,
-                    },
-                )
 
-        return {
-            'A': A,
-            'Anorm': Anorm,
-            'B': B,
-            'Bnorm': Bnorm,
-            'Q': Q
-        }
-    """
-        
-
+        return GreenMatrixContainer(
+            matrices={
+                'A': A,
+                'B': B,
+                'Q': Q
+            },
+            nodes=dict(G.nodes(data=True))
+        )
