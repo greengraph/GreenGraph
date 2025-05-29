@@ -29,9 +29,15 @@ class GreenMatrixContainer():
 
     Attributes
     ----------
+    nodes : dict
+        A dictionary to store nodes of the graph.  
+        Each node is stored as a dictionary with its attributes, such as `type`, `production`, `unit`, etc.
     matrices : dict
         A dictionary to store matrices generated from the graph.  
         Note that each matrix is stored as a [`xarray.DataArray`](https://docs.xarray.dev/en/latest/generated/xarray.DataArray.html#xarray.DataArray) object.
+    results : dict
+        A dictionary to store results of life cycle assessment (LCA) and life cycle impact assessment (LCIA) calculations.  
+        This dictionary is populated by the [`greengraph.core.GreenGraphMatrixContainer.lca`][] and [`greengraph.core.GreenGraphMatrixContainer.lcia`][] methods.
     metadata : dict
         A dictionary to store metadata about the class instance.  
         By default, the metadata dictionary contains:  
@@ -57,21 +63,25 @@ class GreenMatrixContainer():
             'created': datetime.now(),
             'greengraph': importlib.metadata.version('greengraph')
         }
+
         if matrices is None:
             self.matrices = {}
         else:
             self.matrices = matrices
+
         if nodes is None:
             self.nodes = {}
         else:
             self.nodes = nodes
+
+        self.results = {}
         
 
     def lca(
         self,
-        demand: dict[str, float],
-        format: str = 'xarray'
-    ) -> xr.DataArray | pd.DataFrame:
+        demand: Optional[dict[str, float]],
+        format_return: Optional[str] = None
+    ) -> xr.DataArray | pd.DataFrame | None:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
         """
@@ -83,22 +93,27 @@ class GreenMatrixContainer():
             x=x,
             B=self.matrices['B']
         )
-        if format == 'xarray':
+        self.results['g'] = g
+        if format_return == 'xarray':
             return g
-        elif format == 'dataframe':
+        elif format_return == 'dataframe':
             return pd.DataFrame(
                 [
                     {**self.nodes[node], 'amount': g.sel({'extension nodes': node}).item()}
                     for node in g.coords['extension nodes'].values
                 ]
             )
-        else:
-            raise ValueError(f"Unknown format '{format}'. Supported formats are 'xarray' and 'dataframe'.")
+        elif format_return is not None and format_return != 'xarray' and format_return != 'dataframe':
+            raise ValueError(f"Unknown format '{format_return}'. Supported formats are 'xarray' and 'dataframe'.")
+        elif format_return is None:
+            return None
 
 
     def lcia(
         self,
-    ) -> None:
+        demand: Optional[dict[str, float]] | None = None,
+        format_return: Optional[str] = 'dataframe'
+    ) -> xr.DataArray | pd.DataFrame | None:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
 
@@ -119,15 +134,30 @@ class GreenMatrixContainer():
         ----------
         
         """
-        if 'g' not in self.matrices:
-            raise ValueError("The inventory problem of the supply-chain graph must first be solved using the `lca()` method.")
+        if demand is None:
+            if 'g' not in self.results or self.results.get('g') is None:
+                raise ValueError("The inventory problem of the supply-chain graph must first be solved using the `lca()` method.")
+        else:
+            self.lca(demand=demand, format_return='xarray')
 
         h = calculate_impact_vector(
-            g=self.matrices['g'],
+            g=self.results['g'],
             Q=self.matrices['Q']
         )
-        self.matrices['h'] = h
-
+        self.results['h'] = h
+        if format_return == 'xarray':
+            return h
+        elif format_return == 'dataframe':
+            return pd.DataFrame(
+                [
+                    {**self.nodes[node], 'amount': h.sel({'indicator nodes': node}).item()}
+                    for node in h.coords['indicator nodes'].values
+                ]
+            )
+        elif format_return is not None and format_return != 'xarray' and format_return != 'dataframe':
+            raise ValueError(f"Unknown format '{format_return}'. Supported formats are 'xarray' and 'dataframe'.")
+        elif format_return is None:
+            return None
 
 
 class GreenMultiDiGraph(nx.MultiDiGraph):
@@ -713,7 +743,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
                 G=self,
                 matrixformat=matrixformat,
                 name_matrix='extension',
-                normalize_matrix_by_production=True,
+                normalize_matrix_by_production=False,
                 adjacency_amount_attribute='amount',
                 adjacency_dtype=float,
                 name_coordinate_rows='extension nodes (rows)',
@@ -744,12 +774,12 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         else:
             Q = None
 
-
         return GreenMatrixContainer(
             matrices={
                 'A': A,
                 'B': B,
                 'Q': Q
             },
-            nodes=dict(G.nodes(data=True))
+            nodes=dict(self.nodes(data=True))
         )
+# %%

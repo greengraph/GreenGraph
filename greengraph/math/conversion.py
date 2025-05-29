@@ -159,7 +159,6 @@ def generate_matrix_from_graph(
     For sort keys `None`, the lambda function will return the node itself, e.g. `node1` and `node2`.
     """
 
-
     with logtimer(f"Generating {name_matrix} matrix from graph."):
         A = nx.algorithms.bipartite.biadjacency_matrix(
             G,
