@@ -293,7 +293,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
         dict_required_attributes = {
             'production': {'production', 'unit'},
-            'extension': {'production', 'unit'},
+            'extension': {'unit'},
             'indicator': {'unit'},
         }
 
@@ -429,7 +429,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     def add_nodes_from(
         self,
         nodes_for_adding: Any | tuple[Any, dict],
-        validate: Optional[bool] = True,
+        validate: Optional[bool] = False,
         **attr
     ) -> None:
         """
@@ -561,7 +561,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     def add_edges_from(
         self,
         ebunch_to_add,
-        validate: bool = True,
+        validate: bool = False,
         **attr
     ) -> list:
         """

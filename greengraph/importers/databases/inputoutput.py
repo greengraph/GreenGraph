@@ -76,7 +76,7 @@ class useeio:
         )
 
         return useeio._format_useeio_matrices(path_useeio=path_excel_file['path_cached_file'])
-        
+    
     @staticmethod
     def _format_useeio_matrices(
         path_useeio: Path
@@ -513,6 +513,62 @@ class exiobase:
         return {
             'A': df_A,
             'S': df_S,
-            'A_metadata': df_A_metadata,
-            'S_metadata': df_S_metadata
+            'dicts_A_metadata': df_A_metadata.to_dict(orient='records'),
+            'dicts_S_metadata': df_S_metadata.to_dict(orient='records'),
         }
+    
+    @staticmethod
+    def create_graph(
+        version: str = '3.8.2',
+        year: int = 2021,
+        type: str = 'ixi'
+    ) -> GreenMultiDiGraph:
+        r"""
+        Creates a GreenMultiDiGraph from the Exiobase dataset for a given version and year.
+
+        Parameters
+        ----------
+        version : str, optional
+            The version of the Exiobase dataset to use. Must be one of the available versions.
+            See [`greengraph.importers.databases.inputoutput.exiobase.list_available_versions`][] for a list of available versions.
+            Default is `3.8.2`.
+        year : int, optional
+            The year of the Exiobase dataset to use. Must be one of the available years for the given version.
+            See [`greengraph.importers.databases.inputoutput.exiobase.list_available_years`][] for a list of available years.
+            Default is `2021`.
+        type : str, optional
+            The type of Exiobase dataset to use. Must be either 'ixi' or 'pxp'.
+            Default is 'ixi'.
+
+        Returns
+        -------
+        GreenMultiDiGraph
+            A GreenMultiDiGraph representing the Exiobase dataset for the given version and year.
+
+        Raises
+        ------
+        ValueError
+            If the version or year is not available.
+        HTTPError
+            If the request to download the Exiobase data fails.
+        """
+        dict_zenodo_data = exiobase.load_exiobase_data_from_zenodo(
+            version=version,
+            year=year,
+            type=type,
+        )
+        G = graph_system_from_input_output_matrices(
+            name_system='exiobase',
+            assign_new_uuids=True,
+            str_production_nodes_uuid=None,
+            str_extension_nodes_uuid=None,
+            str_indicator_nodes_uuid=None,
+            matrix_convention='I-A',
+            array_production=dict_zenodo_data['A'].to_numpy(),
+            array_extension=dict_zenodo_data['S'].to_numpy(),
+            array_indicator=None,
+            list_dicts_production_node_metadata=dict_zenodo_data['dicts_A_metadata'],
+            list_dicts_extension_node_metadata=dict_zenodo_data['dicts_S_metadata'],
+            list_dicts_indicator_node_metadata=None,
+        )
+        return G

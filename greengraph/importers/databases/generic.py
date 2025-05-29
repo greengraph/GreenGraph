@@ -16,8 +16,8 @@ from greengraph.utility.graph import graph_from_matrix
 def graph_system_from_input_output_matrices(
     name_system: str,
     assign_new_uuids: bool,
-    str_production_nodes_uuid: str,
-    str_extension_nodes_uuid: str,
+    str_production_nodes_uuid: str | None,
+    str_extension_nodes_uuid: str | None,
     str_indicator_nodes_uuid: str | None,
     matrix_convention: str,
     array_production: np.ndarray,
@@ -198,7 +198,6 @@ def graph_system_from_input_output_matrices(
             'system': name_system,
             'production': 1.0 if matrix_convention == 'I-A' else array_production[idx, idx]
         })
-    list_tuples_production_node_metadata = [(d['uuid'], d) for d in list_dicts_production_node_metadata]
 
     # Extension Metadata Parsing
     for idx, dict_node_metadata in enumerate(list_dicts_extension_node_metadata):
@@ -209,7 +208,6 @@ def graph_system_from_input_output_matrices(
             'system': name_system,
             'production': 1.0
         })
-    list_tuples_extension_node_metadata = [(d['uuid'], d) for d in list_dicts_extension_node_metadata]
 
     # Indicator Metadata Parsing
     if array_indicator is not None and list_dicts_indicator_node_metadata is not None:
@@ -220,17 +218,16 @@ def graph_system_from_input_output_matrices(
                 'type': 'indicator',
                 'system': name_system
             })
-        list_tuples_indicator_node_metadata = [(d['uuid'], d) for d in list_dicts_indicator_node_metadata]
-    else:
-        list_tuples_indicator_node_metadata = None
+
     
-    with logtimer("creating MultiDiGraph from technosphere matrix."):
+    with logtimer("creating MultiDiGraph from production matrix."):
         logging.info(
             f"# of nodes: {len(array_production)}, # of edges: {(np.count_nonzero(~np.isnan(array_production) & (array_production != 0))):,}"
         )
         A = graph_from_matrix(
             matrix=array_production,
-            nodes_axis_0=list_tuples_production_node_metadata,
+            validate=False,
+            nodes_axis_0=tuple(i['uuid'] for i in list_dicts_production_node_metadata),
             nodes_axis_1=None,
             common_attributes_nodes_axis_0=None,
             common_attributes_nodes_axis_1=None,
@@ -245,8 +242,9 @@ def graph_system_from_input_output_matrices(
         )
         B = graph_from_matrix(
             matrix=array_extension,
-            nodes_axis_0=list_tuples_extension_node_metadata,
-            nodes_axis_1=list_tuples_production_node_metadata,
+            validate=False,
+            nodes_axis_0=tuple(i['uuid'] for i in list_dicts_extension_node_metadata),
+            nodes_axis_1=tuple(i['uuid'] for i in list_dicts_production_node_metadata),
             common_attributes_nodes_axis_0=None,
             common_attributes_nodes_axis_1=None,
             name_amount_attribute='amount',
@@ -254,15 +252,16 @@ def graph_system_from_input_output_matrices(
             create_using=GreenMultiDiGraph,
         )
 
-    if list_tuples_indicator_node_metadata is not None:
+    if list_dicts_indicator_node_metadata is not None:
         with logtimer("creating MultiDiGraph from indicator matrix."):
             logging.info(
                 f"# of nodes: {len(array_indicator)}, # of edges: {(np.count_nonzero(~np.isnan(array_indicator) & (array_indicator != 0))):,}"
             )
             Q = graph_from_matrix(
                 matrix=array_indicator,
-                nodes_axis_0=list_tuples_indicator_node_metadata,
-                nodes_axis_1=list_tuples_extension_node_metadata,
+                validate=False,
+                nodes_axis_0=tuple(i['uuid'] for i in list_dicts_indicator_node_metadata),
+                nodes_axis_1=tuple(i['uuid'] for i in list_dicts_extension_node_metadata),
                 common_attributes_nodes_axis_0=None,
                 common_attributes_nodes_axis_1=None,
                 name_amount_attribute='weight',
@@ -270,17 +269,29 @@ def graph_system_from_input_output_matrices(
                 create_using=GreenMultiDiGraph,
             )
 
-    with logtimer("merging production and extension graphs. Whoop-whoop!"):
-        if array_indicator is None:
+    if array_indicator is None:
+        with logtimer("merging production and extension graphs."):
             BcomposeA = nx.compose(B, A)
             del A
             del B
-            return BcomposeA
-        elif array_indicator is not None:
+        with logtimer("setting node attributes for production and extension graphs."):
+            nx.set_node_attributes(
+                BcomposeA,
+                {i['uuid']: i for i in list_dicts_production_node_metadata + list_dicts_extension_node_metadata},
+            )
+        return BcomposeA
+    elif array_indicator is not None:
+        with logtimer("merging production+extension graphs."):
             BcomposeA = nx.compose(B, A)
             del A
             del B
+        with logtimer("merging production+extension and indicator graphs."):
             QcomposeBA = nx.compose(Q, BcomposeA)
             del Q
             del BcomposeA
-            return QcomposeBA
+        with logtimer("setting node attributes for production+extension+indicator graph."):
+            nx.set_node_attributes(
+                QcomposeBA,
+                {i['uuid']: i for i in list_dicts_production_node_metadata + list_dicts_extension_node_metadata + list_dicts_indicator_node_metadata},
+            )
+        return QcomposeBA

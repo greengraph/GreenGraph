@@ -1,8 +1,9 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Optional
 import networkx as nx
 import numpy as np
 from greengraph.utility.logging import logtimer
+from greengraph.core import GreenMultiDiGraph
 
 
 def _get_nodes_from_node_container(
@@ -58,10 +59,11 @@ def _get_nodes_from_node_container(
 
 def graph_from_matrix(
     matrix: np.ndarray,
+    validate: bool,
     nodes_axis_0: Iterable[Any | tuple[Any, dict[str, Any]]],
-    nodes_axis_1: Iterable[Any | tuple[Any, dict[str, Any]]] | None,
-    common_attributes_nodes_axis_0: dict | None,
-    common_attributes_nodes_axis_1: dict | None,
+    nodes_axis_1: Iterable[Any | tuple[Any, dict[str, Any]]],
+    common_attributes_nodes_axis_0: Optional[dict] | None,
+    common_attributes_nodes_axis_1: Optional[dict] | None,
     name_amount_attribute: str,
     common_attributes_edges: dict,
     create_using: type,
@@ -71,7 +73,6 @@ def graph_from_matrix(
     
     This function can create a graph from either an adjacency matrix or a biadjacency matrix.
     
-
     Example
     -------
     ```python
@@ -120,28 +121,35 @@ def graph_from_matrix(
 
     if nodes_axis_0 is None:
         raise ValueError("Some nodes must be provided.")
-    if nodes_axis_1 is not None:
-        with logtimer('creating graph from bi-adjacency matrix (different row/column labels).'):
-            G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
-            G.add_nodes_from(nodes_axis_1, **(common_attributes_nodes_axis_1 or {}))
-            row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
-            col_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_1))[col_indices_nonzero]
     else:
-        with logtimer('creating graph from adjacency matrix (same row/column labels).'):
-            G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}))
-            row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
-            row_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
-            col_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[col_indices_nonzero]
-    
-    values = matrix[row_indices_nonzero, col_indices_nonzero]
-    edges = [
-        (
-            str(row), str(col), {name_amount_attribute: float(val), **(common_attributes_edges or {})})
-            for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values
-        )
-    ]
+        with logtimer('creating graph from bi-adjacency matrix.'):
+            G.add_nodes_from(nodes_axis_0, **(common_attributes_nodes_axis_0 or {}), validate=validate)
+            if nodes_axis_1 is not None:
+                G.add_nodes_from(nodes_axis_1, **(common_attributes_nodes_axis_1 or {}), validate=validate)
 
-    G.add_edges_from(edges)
+    with logtimer('adding edges to the graph from adjacency matrix.'):
+        row_indices_nonzero, col_indices_nonzero = np.nonzero(matrix)
+        row_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_0))[row_indices_nonzero]
+        if nodes_axis_1 is None:
+            col_labels_nonzero = row_labels_nonzero
+        else:
+            col_labels_nonzero = np.array(_get_nodes_from_node_container(nodes_axis_1))[col_indices_nonzero]
+        values = matrix[row_indices_nonzero, col_indices_nonzero]
+        
+        generator_edges = (
+            (
+                str(row),
+                str(col),
+                {
+                    name_amount_attribute: float(val),
+                    **(common_attributes_edges or {})
+                }
+            )
+            for row, col, val in zip(row_labels_nonzero, col_labels_nonzero, values)
+        )
+        if create_using == GreenMultiDiGraph:
+            G.add_edges_from(generator_edges, validate=validate)
+        else:
+            G.add_edges_from(generator_edges)
 
     return G
