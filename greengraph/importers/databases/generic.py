@@ -3,6 +3,8 @@ This module contains functions to turn properly formatted
 arrays, dataframe, metadata lists, etc. into a greengraph graph.
 """
 
+# %%
+
 import networkx as nx
 import xarray as xr
 import numpy as np
@@ -295,3 +297,186 @@ def graph_system_from_input_output_matrices(
                 {i['uuid']: i for i in list_dicts_production_node_metadata + list_dicts_extension_node_metadata + list_dicts_indicator_node_metadata},
             )
         return QcomposeBA
+    
+
+
+def graph_system_from_node_and_edge_lists(
+    name_system: str,
+    assign_new_uuids: bool,
+    str_production_nodes_uuid: str,
+    str_extension_nodes_uuid: str,
+    list_dicts_production_nodes_metadata: list[dict],
+    list_dicts_extension_nodes_metadata: list[dict],
+    list_tuples_production_edges: list[dict],
+    list_tuples_extension_edges: list[dict],
+) -> nx.MultiDiGraph:
+    r"""
+    Given a list of nodes and edges of production and extension types,
+    create a MultiDiGraph.
+
+    Notes
+    -----
+    This function is best suited for importing Ecoinvent/Ecospold data.
+
+    Warnings
+    --------
+    This function expects that:
+
+    1. Unless an attribute `production` is specified for a node, production is set to 1.
+
+    Example
+    -------
+    Note that this example uses the same example system as
+    [`greengraph.importers.databases.generic.graph_system_from_input_output_matrices`][].
+    ```python
+    list_dicts_production_nodes_metadata = [
+        {'name': 'A', 'unit': 'kg'},
+        {'name': 'B', 'unit': 'kg'},
+        {'name': 'C', 'unit': 'kg'}
+    ]
+    list_dicts_extension_nodes_metadata = [
+        {'name': 'alpha', 'unit': 'kg(CO2)'},
+    ]
+    list_tuples_production_edges = [
+        ('B', 'A', 1),
+        ('C', 'B', 2),
+        ('C', 'A', 3)
+    ]
+    list_tuples_extension_edges = [
+        ('A', 'alpha', 4),
+        ('B', 'alpha', 3),
+        ('C', 'alpha', 2)
+    ]
+    G = graph_system_from_node_and_edge_lists(
+        name_system='example_system',
+        assign_new_uuids=False,
+        str_production_nodes_uuid='name',
+        str_extension_nodes_uuid='name',
+        list_dicts_production_nodes_metadata=list_dicts_production_nodes_metadata,
+        list_dicts_extension_nodes_metadata=list_dicts_extension_nodes_metadata,
+        list_tuples_production_edges=list_tuples_production_edges,
+        list_tuples_extension_edges=list_tuples_extension_edges
+    )
+    ```
+
+    Parameters
+    ----------
+    name_system : str
+        Name of the system.
+    assign_new_uuids : bool
+        Whether to assign new UUIDs to the nodes.  
+        If True, new UUIDs (`uuid.uuid4()`) will be assigned.  
+        If False, the UUIDs in the metadata dictionaries will be used.
+    str_production_nodes_uuid : str
+        The key in the metadata dictionaries that contains the UUIDs for production nodes.
+    str_extension_nodes_uuid : str
+        The key in the metadata dictionaries that contains the UUIDs for extension nodes.
+    list_dicts_production_nodes_metadata : list[dict]
+        List of metadata dictionaries for production nodes.  
+        Must contain at least the keys `['name', 'unit']`.
+    list_dicts_extension_nodes_metadata : list[dict]
+        List of metadata dictionaries for extension nodes.  
+        Must contain at least the keys `['name', 'unit']`.
+    list_tuples_production_edges : list[tuple]
+        List of tuples representing edges for production nodes.  
+        Must be in the form: `(source_uuid, target_uuid, amount)`.
+    list_tuples_extension_edges : list[tuple]
+        List of tuples representing edges for extension nodes.  
+        Must be in the form: `(source_uuid, target_uuid, amount)`.
+    
+    Returns
+    -------
+    nx.MultiDiGraph
+        The created MultiDiGraph.
+
+    Raises
+    ------
+    ValueError
+        - If the input data is not in the correct format.
+        - If the number of nodes in the production graph does not match the number of metadata dictionaries.
+        - If the number of nodes in the extension graph does not match the number of metadata dictionaries.
+        - If the number of nodes in the combined graph does not match the number of metadata dictionaries.
+    """
+
+    A = GreenMultiDiGraph(None)
+    B = GreenMultiDiGraph(None)
+
+    # Production Metadata Parsing
+    with logtimer("adding nodes to production graph."):
+        for node in list_dicts_production_nodes_metadata:
+            node['type'] = 'production'
+            node['system'] = name_system
+            if 'production' not in node:
+                node['production'] = 1.0
+            A.add_node(node[str_production_nodes_uuid], validate=False)
+        A.add_edges_from(
+            tuple(
+                (i[0], i[1], {'amount': i[2], 'type': 'flow'})
+                for i in list_tuples_production_edges
+            )
+        )
+    
+    # Extension Metadata Parsing
+    with logtimer("adding nodes to extension graph."):
+        for node in list_dicts_extension_nodes_metadata:
+            node['type'] = 'extension'
+            node['system'] = name_system
+            B.add_node(node[str_extension_nodes_uuid], validate=False)
+        B.add_edges_from(
+            tuple(
+                (i[0], i[1], {'amount': i[2], 'type': 'flow'})
+                for i in list_tuples_extension_edges
+            )
+        )
+    
+    with logtimer("merging production graph and extension graph."):
+        G = nx.compose(A, B)
+        del A
+        del B
+    
+    with logtimer("setting node attributes for production+extension+indicator graph."):
+        nx.set_node_attributes(
+            G,
+            {i[str_production_nodes_uuid]: i for i in list_dicts_production_nodes_metadata},
+        )
+        nx.set_node_attributes(
+            G,
+            {i[str_extension_nodes_uuid]: i for i in list_dicts_extension_nodes_metadata},
+        )
+        if assign_new_uuids == True:
+            nx.relabel_nodes(G, {node: str(uuid.uuid4()) for node in G.nodes()}, copy=False)
+
+
+    # if len(A.nodes) != len(list_dicts_production_nodes_metadata):
+    #    raise ValueError("Number of nodes in production graph does not match number of metadata dictionaries.")
+    # some ecoinvent versions have more metadata dictionaries than nodes
+    # if len(B.nodes) != (len(list_dicts_extension_nodes_metadata) + len(list_tuples_production_edges)):
+    #     raise ValueError("Number of nodes in extension graph does not match number of metadata dictionaries.")
+    # if len(G.nodes) != (len(list_dicts_production_nodes_metadata) + len(list_dicts_extension_nodes_metadata)):
+    #     raise ValueError("Number of nodes in combined graph does not match number of metadata dictionaries.")
+    
+    return G
+
+# %%
+
+import pickle
+with open('/Users/michaelweinold/github/GreenGraph/dev/ecop.pkl', 'rb') as f:
+    ecop = pickle.load(f)
+
+G = graph_system_from_node_and_edge_lists(
+    name_system='ecoinvent',
+    assign_new_uuids=True,
+    str_extension_nodes_uuid='brightway_code_extension',
+    str_production_nodes_uuid='brightway_code_process',
+    list_dicts_production_nodes_metadata=ecop['nodes_production'],
+    list_dicts_extension_nodes_metadata=ecop['nodes_extension'],
+    list_tuples_production_edges=ecop['edges_production'],
+    list_tuples_extension_edges=ecop['edges_biosphere']
+)
+
+M = G.generate_matrices(
+    matrixformat='dense',
+    generate_A=True,
+    generate_B=True,
+    generate_Q=False,
+)
