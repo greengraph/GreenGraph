@@ -398,18 +398,17 @@ def graph_system_from_node_and_edge_lists(
         - If the number of nodes in the combined graph does not match the number of metadata dictionaries.
     """
 
-    A = GreenMultiDiGraph(None)
-    B = GreenMultiDiGraph(None)
+    G = GreenMultiDiGraph(None)
 
     # Production Metadata Parsing
-    with logtimer("adding nodes to production graph."):
+    with logtimer("adding production nodes to graph."):
         for node in list_dicts_production_nodes_metadata:
             node['type'] = 'production'
             node['system'] = name_system
             if 'production' not in node:
                 node['production'] = 1.0
-            A.add_node(node[str_production_nodes_uuid], validate=False)
-        A.add_edges_from(
+            G.add_node(node[str_production_nodes_uuid], validate=False)
+        G.add_edges_from(
             tuple(
                 (i[0], i[1], {'amount': i[2], 'type': 'flow'})
                 for i in list_tuples_production_edges
@@ -417,22 +416,18 @@ def graph_system_from_node_and_edge_lists(
         )
     
     # Extension Metadata Parsing
-    with logtimer("adding nodes to extension graph."):
+    with logtimer("adding extension nodes to graph."):
         for node in list_dicts_extension_nodes_metadata:
             node['type'] = 'extension'
             node['system'] = name_system
-            B.add_node(node[str_extension_nodes_uuid], validate=False)
-        B.add_edges_from(
+            G.add_node(node[str_extension_nodes_uuid], validate=False)
+        G.add_edges_from(
             tuple(
-                (i[0], i[1], {'amount': i[2], 'type': 'flow'})
+                (i[1], i[0], {'amount': i[2], 'type': 'flow'})
                 for i in list_tuples_extension_edges
             )
         )
     
-    with logtimer("merging production graph and extension graph."):
-        G = nx.compose(A, B)
-        del A
-        del B
     
     with logtimer("setting node attributes for production+extension+indicator graph."):
         nx.set_node_attributes(
@@ -466,17 +461,20 @@ with open('/Users/michaelweinold/github/GreenGraph/dev/ecop.pkl', 'rb') as f:
 G = graph_system_from_node_and_edge_lists(
     name_system='ecoinvent',
     assign_new_uuids=True,
-    str_extension_nodes_uuid='brightway_code_extension',
     str_production_nodes_uuid='brightway_code_process',
+    str_extension_nodes_uuid='brightway_code_extension',
     list_dicts_production_nodes_metadata=ecop['nodes_production'],
     list_dicts_extension_nodes_metadata=ecop['nodes_extension'],
     list_tuples_production_edges=ecop['edges_production'],
     list_tuples_extension_edges=ecop['edges_biosphere']
 )
 
+# %%
+
 M = G.generate_matrices(
-    matrixformat='dense',
+    matrixformat='csr',
     generate_A=True,
     generate_B=True,
     generate_Q=False,
 )
+# %%

@@ -2,6 +2,7 @@
 from greengraph.utility.logging import logtimer
 import networkx as nx
 import numpy as np
+import sparse
 import xarray as xr
 from typing import Optional, Union, Type
 
@@ -168,14 +169,7 @@ def generate_matrix_from_graph(
             weight=adjacency_amount_attribute,
             format=matrixformat
         )
-        A = xr.DataArray(
-            A,
-            dims=(name_coordinate_rows, name_coordinate_cols),
-            coords={
-                name_coordinate_rows: list_sorted_nodes_rows,
-                name_coordinate_cols: list_sorted_nodes_cols,
-            },
-        )
+
         if normalize_matrix_by_production == True:
             """
             Notes
@@ -211,9 +205,20 @@ def generate_matrix_from_graph(
             array_production = np.array(
                 [
                     [G.nodes[node]['production']]
-                    for node in A.coords[name_coordinate_cols].values
+                    for node in list_sorted_nodes_cols
                 ]
             )
-            return A / array_production
-        else:
-            return A
+            A = A / array_production
+
+        if matrixformat != 'dense':
+            A = sparse.COO(A)
+        A = xr.DataArray(
+            A,
+            dims=(name_coordinate_rows, name_coordinate_cols),
+            coords={
+                name_coordinate_rows: list_sorted_nodes_rows,
+                name_coordinate_cols: list_sorted_nodes_cols,
+            },
+        )
+        
+        return A

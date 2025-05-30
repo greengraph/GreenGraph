@@ -8,6 +8,7 @@ It includes utilities for matrix manipulation and calculations.
 import networkx as nx
 import numpy as np
 import scipy as sp
+import sparse
 import xarray as xr
 from greengraph.utility.logging import logtimer
 
@@ -84,11 +85,11 @@ def calculate_production_vector(
     if set(demand.values()) == {0} or set(demand.values()) == {0.0}:
         raise ValueError("Demand vector must not be all zeros.")
     
-    if sp.sparse.issparse(A.data):
-        with logtimer("calculating production vector."):
-            x = sp.sparse.linalg.spsolve(np.eye(A.data.shape[0]) - A.data, f)
+    if isinstance(A.data, sparse.COO):
+        with logtimer("calculating production vector (sparse solver)."):
+            x = sp.sparse.linalg.spsolve(sp.sparse.csr_array(np.eye(A.data.shape[0])) - A.data.tocsr(), f)
     else:
-        with logtimer("calculating production vector."):
+        with logtimer("calculating production vector (dense solver)."):
             x = np.linalg.solve(np.eye(A.data.shape[0]) - A.data, f)
 
     x = xr.DataArray(
@@ -161,16 +162,16 @@ def calculate_inventory_vector(
         Inventory vector $\vec{g}$.  
         $\text{dim}(\vec{g})=[R \times 1]$
     """
-    if not isinstance(x.data, np.ndarray):
-        raise TypeError("x.data must be a numpy array.")
-    if not isinstance(B.data, np.ndarray):
-        raise TypeError("B.data must be a numpy array.")
-    if not np.array_equal(B.coords['production nodes (cols)'].values, x.coords['production nodes'].values):
-        raise ValueError("Columns of B and rows of x do not align!")
+    # if not isinstance(x.data, np.ndarray):
+    #     raise TypeError("x.data must be a numpy array.")
+    # if not isinstance(B.data, np.ndarray):
+    #     raise TypeError("B.data must be a numpy array.")
+    # if not np.array_equal(B.coords['production nodes (cols)'].values, x.coords['production nodes'].values):
+    #    raise ValueError("Columns of B and rows of x do not align!")
 
     with logtimer("calculating inventory vector."):
         g = xr.DataArray(
-            data=B.data @ x.data,
+            data=(B.data.tocsr() if isinstance(B.data, sparse.COO) else B.data) @ x.data,
             dims='extension nodes',
             coords={
                 'extension nodes': B.coords['extension nodes (rows)'].values,
