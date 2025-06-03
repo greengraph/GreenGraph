@@ -11,6 +11,7 @@ import random
 from typing import Optional, Any
 import pandas as pd
 import numpy as np
+import scipy as sp
 from greengraph.utility.logging import logtimer
 
 from greengraph.math.matrix import (
@@ -79,14 +80,14 @@ class GreenMatrixContainer():
 
     def lca(
         self,
-        demand: Optional[dict[str, float]],
+        demand: dict[str, float],
         format_return: Optional[str] = None
     ) -> xr.DataArray | pd.DataFrame | None:
         r"""
         Computes the life cycle assessment (LCA) of the graph.
         """
         x = calculate_production_vector(
-            A=self.matrices['A'],
+            IminusA=self.matrices['I-A'],
             demand=demand
         )
         g = calculate_inventory_vector(
@@ -737,6 +738,12 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
             sort_attributes_nodes_rows=A_sort_attributes,
             sort_attributes_nodes_cols=A_sort_attributes
         )
+        if matrixformat != 'dense':
+            IminusA = sp.sparse.csr_array(np.eye(A.data.shape[0])) - A
+            del A
+        else:
+            IminusA = np.eye(A.data.shape[0]) - A
+            del A
 
         if generate_B == True:
             B = generate_matrix_from_graph(
@@ -776,10 +783,9 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
         return GreenMatrixContainer(
             matrices={
-                'A': A,
+                'I-A': IminusA,
                 'B': B,
                 'Q': Q
             },
             nodes=dict(self.nodes(data=True))
         )
-# %%

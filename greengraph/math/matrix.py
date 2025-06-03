@@ -13,7 +13,7 @@ import xarray as xr
 from greengraph.utility.logging import logtimer
 
 def calculate_production_vector(
-    A: xr.DataArray,
+    IminusA: xr.DataArray,
     demand: dict[str, float],
 ) -> xr.DataArray:
     r"""
@@ -72,31 +72,31 @@ def calculate_production_vector(
         Production vector $\vec{x}$.  
         $\text{dim}(\vec{x})=[N \times 1]$
     """
-    if not isinstance(A, xr.DataArray):
-        raise TypeError("A.data must be a numpy array.")
+    #if not isinstance(IminusA, xr.DataArray):
+    #    raise TypeError("A.data must be a numpy array.")
     
-    f = np.zeros(A.data.shape[0])
+    f = np.zeros(IminusA.data.shape[0])
 
     for node, value in demand.items():
-        if np.isin(node, A.coords['production nodes (rows)'].values):
-            f[A.coords['production nodes (rows)'].values == node] = value
+        if np.isin(node, IminusA.coords['production nodes (rows)'].values):
+            f[IminusA.coords['production nodes (rows)'].values == node] = value
         else:
             raise ValueError(f"Node {node} not present in production matrix.")
     if set(demand.values()) == {0} or set(demand.values()) == {0.0}:
         raise ValueError("Demand vector must not be all zeros.")
     
-    if isinstance(A.data, sparse.COO):
+    if isinstance(IminusA.data, sparse.COO):
         with logtimer("calculating production vector (sparse solver)."):
-            x = sp.sparse.linalg.spsolve(sp.sparse.csr_array(np.eye(A.data.shape[0])) - A.data.tocsr(), f)
+            x = sp.sparse.linalg.spsolve(IminusA.data.tocsr(), f)
     else:
         with logtimer("calculating production vector (dense solver)."):
-            x = np.linalg.solve(np.eye(A.data.shape[0]) - A.data, f)
+            x = np.linalg.solve(IminusA.data, f)
 
     x = xr.DataArray(
         x,
         dims='production nodes',
         coords={
-            'production nodes': A.coords['production nodes (rows)'].values,
+            'production nodes': IminusA.coords['production nodes (rows)'].values,
         }
     )
 

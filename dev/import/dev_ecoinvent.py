@@ -36,3 +36,40 @@ G = graph_system_from_node_and_edge_lists(
     list_tuples_production_edges=ecoinvent_node_and_edge_data['edges_production'],
     list_tuples_extension_edges=ecoinvent_node_and_edge_data['edges_biosphere'],
 )
+
+
+# %%
+
+import numpy as np
+
+from greengraph.importers.databases.generic import graph_system_from_node_and_edge_lists
+
+import pickle
+with open('/Users/michaelweinold/github/GreenGraph/dev/ecop.pkl', 'rb') as f:
+    ecop = pickle.load(f)
+
+G = graph_system_from_node_and_edge_lists(
+    name_system='ecoinvent',
+    assign_new_uuids=True,
+    str_production_nodes_uuid='brightway_code_process',
+    str_extension_nodes_uuid='brightway_code_extension',
+    list_dicts_production_nodes_metadata=ecop['nodes_production'],
+    list_dicts_extension_nodes_metadata=ecop['nodes_extension'],
+    list_tuples_production_edges=ecop['edges_production'],
+    list_tuples_extension_edges=ecop['edges_biosphere']
+)
+
+# %%
+
+M = G.generate_matrices(
+    matrixformat='csr',
+    generate_A=True,
+    generate_B=True,
+    generate_Q=False,
+)
+# %%
+
+M.lca(
+    demand={G.get_random_node(type='production'): 1.0},
+    format_return='xarray',
+)
