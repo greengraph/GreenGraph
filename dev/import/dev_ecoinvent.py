@@ -4,18 +4,16 @@
 # %%
 from pathlib import Path
 import networkx as nx
-from greengraph.importers.databases.ecoinvent import _prepare_ecoinvent_node_and_edge_lists
+from greengraph.importers.databases.ecoinvent import ecoinvent
 
-from greengraph.importers.databases.ecoinvent import (
-    _extract_ecospold_xml_files,
-    _prepare_ecoinvent_node_and_edge_lists,
+
+ecospold_xml_files = ecoinvent._extract_ecospold_xml_files(
+    path=Path('/Users/michaelweinold/data/ecoinvent 3.10_cutoff_ecoSpold02'),
 )
 
-ecospold_xml_files = _extract_ecospold_xml_files(
-    path=Path('/Users/michaelweinold/data/ecoinvent_3.11_cutoff_lcia_ecoSpold02'),
-)
+# %%
 
-ecoinvent_node_and_edge_data = _prepare_ecoinvent_node_and_edge_lists(
+ecoinvent_node_and_edge_data = ecoinvent._prepare_ecoinvent_node_and_edge_lists(
     process_nodes=ecospold_xml_files['process_nodes'],
     product_nodes=ecospold_xml_files['product_nodes'],
     ecosphere_flows_mapping=ecospold_xml_files['ecosphere_flows_mapping'],
@@ -23,8 +21,10 @@ ecoinvent_node_and_edge_data = _prepare_ecoinvent_node_and_edge_lists(
     ecosphere_edges=ecospold_xml_files['ecosphere_edges'],
 )
 
-from greengraph.importers.databases.generic import graph_system_from_node_and_edge_lists
 
+# %%
+
+from greengraph.importers.databases.generic import graph_system_from_node_and_edge_lists
 
 G = graph_system_from_node_and_edge_lists(
     name_system="ecoinvent 3.10",
@@ -34,30 +34,16 @@ G = graph_system_from_node_and_edge_lists(
     list_dicts_production_nodes_metadata=ecoinvent_node_and_edge_data['nodes_production'],
     list_dicts_extension_nodes_metadata=ecoinvent_node_and_edge_data['nodes_extension'],
     list_tuples_production_edges=ecoinvent_node_and_edge_data['edges_production'],
-    list_tuples_extension_edges=ecoinvent_node_and_edge_data['edges_biosphere'],
+    list_tuples_extension_edges=ecoinvent_node_and_edge_data['edges_extension'],
 )
 
 
 # %%
 
-import numpy as np
-
-from greengraph.importers.databases.generic import graph_system_from_node_and_edge_lists
 
 import pickle
-with open('/Users/michaelweinold/github/GreenGraph/dev/ecop.pkl', 'rb') as f:
-    ecop = pickle.load(f)
-
-G = graph_system_from_node_and_edge_lists(
-    name_system='ecoinvent',
-    assign_new_uuids=True,
-    str_production_nodes_uuid='brightway_code_process',
-    str_extension_nodes_uuid='brightway_code_extension',
-    list_dicts_production_nodes_metadata=ecop['nodes_production'],
-    list_dicts_extension_nodes_metadata=ecop['nodes_extension'],
-    list_tuples_production_edges=ecop['edges_production'],
-    list_tuples_extension_edges=ecop['edges_biosphere']
-)
+with open('/Users/michaelweinold/github/GreenGraph/dev/Geco.pkl', 'wb') as f:
+    pickle.dump(G, f)
 
 # %%
 

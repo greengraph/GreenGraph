@@ -1,11 +1,16 @@
 # Hybrid Life-Cycle Assessment
 
-## Tiered Hybrid Method
+## Concordance (=Matching of Processes and Sectors)
 
-### Known Unknowns
 
-<img src="../../_media/hlca_tiered_known_unknown.svg" width="400">
+![](_media/hybrid/geographic_concordance.svg){ align=center }
 
-### Unknown Unknowns
+Some text here 
 
-<img src="../../_media/hlca_tiered_unknown_unknown.svg" width="400">
+$$
+a = \begin{bmatrix}
+    1 & 0 & 0 \\
+    0 & 1 & 0 \\
+    0 & 0 & 1
+\end{bmatrix}
+$$

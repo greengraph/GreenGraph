@@ -285,6 +285,12 @@ class ecoinvent:
             .getroot()
             .iterchildren(NS + "geography")
         }
+        geographies_code_mapping = {
+            elem.get("id"): elem.shortname.text
+            for elem in objectify.parse(open(GEOGRAPHIES_FP))
+            .getroot()
+            .iterchildren(NS + "geography")
+        }
         activity_names_mapping = {
             elem.get("id"): elem.name.text
             for elem in objectify.parse(open(ACTIVITY_NAME_FP))
@@ -296,6 +302,7 @@ class ecoinvent:
             elem.get("id"): {
                 "name": activity_names_mapping[elem.get("activityNameId")],
                 "geography": geographies_mapping[elem.get("geographyId")],
+                "geography code": geographies_code_mapping[elem.get("geographyId")],
                 "start": elem.get("startDate"),
                 "end": elem.get("endDate"),
                 "type": SPECIAL_ACTIVITY_TYPE_MAP[int(elem.get("specialActivityType"))],
@@ -541,6 +548,7 @@ class ecoinvent:
                 'product': product_attributes[1]['name'],
                 'unit': product_attributes[1]['unit'],
                 'geography': process_attributes[0]['geography'],
+                'geography code': process_attributes[0]['geography code'],
                 'classifications': product_attributes[1]['classifications'],
                 'brightway_code_process': process_code,
                 'brightway_code_product': product_code
@@ -563,7 +571,7 @@ class ecoinvent:
             for extension_code, extension_attributes in ecosphere_flows_mapping.items()
         ]
 
-        edges_biosphere = [(edge.process, edge.flow, edge.amount) for edge in ecosphere_edges]
+        edges_extension = [(edge.process, edge.flow, edge.amount) for edge in ecosphere_edges]
 
         """
         For example, the following list `technosphere_edges`:
@@ -601,31 +609,6 @@ class ecoinvent:
         return {
             'nodes_production': nodes_production,
             'nodes_extension': nodes_extension,
-            'edges_biosphere': edges_biosphere,
             'edges_production': edges_production,
+            'edges_extension': edges_extension,
         }
-
-"""
-
-def graph_system_from_node_and_edge_lists(
-    name_system: str,
-    assign_new_uuids: bool,
-    str_production_nodes_uuid: str,
-    str_extension_nodes_uuid: str,
-    list_dicts_production_nodes_metadata: list[dict],
-    list_dicts_extension_nodes_metadata: list[dict],
-    list_tuples_production_edges: list[dict],
-    list_tuples_extension_edges: list[dict],
-)
-
-G = graph_system_from_node_and_edge_lists(
-    name_system='ecoinvent',
-    assign_new_uuids=True,
-    str_production_nodes_uuid=None,
-    str_extension_nodes_uuid=None,
-    list_dicts_production_nodes_metadata=nodes_production,
-    list_dicts_extension_nodes_metadata=nodes_extension,
-    list_tuples_production_edges=edges_production,
-    list_tuples_extension_edges=edges_biosphere,
-)
-"""
