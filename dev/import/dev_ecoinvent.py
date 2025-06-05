@@ -8,7 +8,7 @@ from greengraph.importers.databases.ecoinvent import ecoinvent
 
 
 ecospold_xml_files = ecoinvent._extract_ecospold_xml_files(
-    path=Path('/Users/michaelweinold/data/ecoinvent 3.10_cutoff_ecoSpold02'),
+    path=Path('/Users/michaelweinold/data/ecoinvent 3.10.1_cutoff_ecoSpold02'),
 )
 
 # %%

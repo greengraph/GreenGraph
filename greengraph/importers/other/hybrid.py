@@ -11,35 +11,38 @@ from greengraph.utility.data import (
 # %%
 
 df = pd.read_excel(
-    "/Users/michaelweinold/github/pylcaio/src/Data/mappings/filters.xlsx",
+    "/Users/michaelweinold/github/pylcaio/src/Data/ecoinvent/ei3.10/mappings/filters.xlsx",
     sheet_name="Hybridized processes",
     header=0,
+).dropna(axis=1, how='all')
+
+df['geography code'] = df['location']
+df['matching'] = df[['name', 'geography code']].to_dict(orient='records')
+df['matching'] = df['matching'].apply(
+    lambda row: _dict_to_tuple(row)
 )
 
+dict_lookup_eco = _create_dynamic_lookup_dictionary(
+    G=Geco,
+    node_type='production',
+    list_attributes=['name', 'geography code']
+)
+
+df['matched'] = df['matching'].map(dict_lookup_eco)
+
 # %%
 
-Gexio = exiobase.create_graph()
+Gexio = exiobase.create_graph(
+        version='3.8.2',
+        year=2021,
+        type='pxp'
+    )
 
 # %%
-
-import numpy as np
-
-from greengraph.importers.databases.generic import graph_system_from_node_and_edge_lists
 
 import pickle
-with open('/Users/michaelweinold/github/GreenGraph/dev/ecop.pkl', 'rb') as f:
-    ecop = pickle.load(f)
-
-Geco = graph_system_from_node_and_edge_lists(
-    name_system='ecoinvent',
-    assign_new_uuids=True,
-    str_production_nodes_uuid='brightway_code_process',
-    str_extension_nodes_uuid='brightway_code_extension',
-    list_dicts_production_nodes_metadata=ecop['nodes_production'],
-    list_dicts_extension_nodes_metadata=ecop['nodes_extension'],
-    list_tuples_production_edges=ecop['edges_production'],
-    list_tuples_extension_edges=ecop['edges_biosphere']
-)
+with open('/Users/michaelweinold/github/GreenGraph/dev/Geco.pkl', 'rb') as f:
+    Geco = pickle.load(f)
 
 # %%
 
@@ -49,14 +52,52 @@ dict_lookup = _create_dynamic_lookup_dictionary(
     list_attributes=['name', 'location']
 )
 
+import json
+from importlib import resources
+
+conc = {}
+with resources.open_text("greengraph.data.concordance", "geography_ecoinvent_exiobase.json") as file:
+    conc = json.load(file)
+
+df['matched2'] = df['matching']
+
 # %%
 
 # CONCORDANCE (ALL?)
 
-for node_process, attr_process in Geco.nodes(data=True):
-    if attr_process['type'] == 'production':
-        # get corresponding sector name from excel sheet
-        # ultimately, we want to get `node_sector` and `concordance (weight)`
+
+from greengraph.core import GreenMultiDiGraph
+H = GreenMultiDiGraph()
+
+set_locations_exio = {x for item in conc.values() for x in (item if isinstance(item, list) else [item])}
+
+lst = []
+for i, row_process in df.iterrows():
+    """
+    Case 1
+
+    One-to-one concordance of ecoinvent process to exiobase sector
+
+    Example
+    -------
+    ```
+    loc_process='US'
+    conc['US']='US'
+    ```
+    """
+    if row_process['location'] in set_locations_exio:
+        node_sector = dict_lookup.get(
+            (
+                ('location', row_process['location']),
+                ('name', row_process['exiobase_sector'])
+            )
+        )
+        print(node_sector)
+    
+    # lst.append(row_process)
+
+
+# %%
 
 # CONCORDANCE (GEOGRAPHIC)
 

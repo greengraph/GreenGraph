@@ -381,6 +381,7 @@ class exiobase:
             path_A=dict_exiobase_files['path_A'],
             path_S=dict_exiobase_files['path_S'],
             path_S_metadata=dict_exiobase_files['path_S_metadata'],
+            path_x=dict_exiobase_files['path_x'],
         )
 
     
@@ -423,19 +424,25 @@ class exiobase:
                 file_S_metadata = zip.extract(
                     member=f"{top_level_dir}/satellite/unit.txt",
                     path=APP_CACHE_BASE_DIR  / 'exiobase'
-                )                    
+                )      
+                file_s = zip.extract(
+                    member=f"{top_level_dir}/x.txt",       
+                    path=APP_CACHE_BASE_DIR  / 'exiobase'
+                )   
 
         return {
             'path_A': Path(file_A),
             'path_S': Path(file_S),
-            'path_S_metadata': Path(file_S_metadata)
+            'path_S_metadata': Path(file_S_metadata),
+            'path_x': Path(file_s),
         }
 
     @staticmethod
     def format_exiobase_matrices(
         path_A: Path,
         path_S: Path,
-        path_S_metadata: Path
+        path_S_metadata: Path,
+        path_x: Path
     ) -> dict:
         r"""
         Given a path to the relevant Exiobase txt-files, extracts the matrices and metadata from the files
@@ -499,6 +506,22 @@ class exiobase:
                 header=None
             )
             df_S_metadata.columns = ['name', 'unit']
+
+            df_x = pd.read_csv(
+                path_x,
+                delimiter='\t',
+                header=0
+            )
+            df_x['annual production'] = df_x['indout'] * 1E6  # convert from million EUR to EUR
+            df_x.drop(columns=['indout'], inplace=True)
+            df_A_metadata = pd.merge(
+                left=df_A_metadata,
+                right=df_x,
+                how='left',
+                left_on=['location', 'name'],
+                right_on=['region', 'sector']
+            )
+            del df_x
 
         for df in [df_A, df_S]:
             if all(is_numeric_dtype(df[col]) for col in df.columns) == False:
