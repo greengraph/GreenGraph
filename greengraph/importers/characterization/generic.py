@@ -7,9 +7,9 @@ import numpy as np
 import greengraph.importers
 import greengraph.importers.characterization
 import greengraph.importers.characterization.impact_world_plus
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 import greengraph
-from greengraph.utility.data import create_dynamic_lookup_dictionary
+from greengraph.utility.search import create_dynamic_lookup_dictionary
 import logging
 from greengraph.utility.graph import from_biadjacency_matrix
 

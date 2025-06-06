@@ -2,7 +2,7 @@
 
 import pandas as pd
 import networkx as nx
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 from greengraph.utility.download import _load_file_from_zenodo_with_caching
 
 

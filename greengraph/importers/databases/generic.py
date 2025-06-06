@@ -11,7 +11,7 @@ import numpy as np
 import logging
 import uuid
 from greengraph.core import GreenMultiDiGraph
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 from greengraph.utility.graph import graph_from_matrix
 
 

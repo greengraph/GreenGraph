@@ -2,7 +2,7 @@
 from lxml import objectify
 from dataclasses import dataclass
 from pathlib import Path
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 
 class ecoinvent:
     r"""

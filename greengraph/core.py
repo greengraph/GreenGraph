@@ -12,7 +12,13 @@ from typing import Optional, Any
 import pandas as pd
 import numpy as np
 import scipy as sp
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
+from functools import lru_cache
+
+from greengraph.utility.search import (
+    _dict_to_tuple,
+    _build_lookup_dictionary
+)
 
 from greengraph.math.matrix import (
     calculate_production_vector,
@@ -789,3 +795,36 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
             },
             nodes=dict(self.nodes(data=True))
         )
+    
+
+
+    @lru_cache
+    def _build_cached_lookup_dictionary(
+        self,
+        tuple_attributes: tuple[str]
+    ) -> dict[tuple[str], str]:
+        return _build_lookup_dictionary(G=self, tuple_attributes=tuple_attributes)
+    
+    def search(
+        self,
+        dict_search_attributes: dict,
+        raise_error_on_not_found: Optional[bool] = False,
+    ) -> Optional[str]:
+        if not isinstance(dict_search_attributes, dict):
+            raise TypeError(f"Expected a dictionary for search attributes, but got {type(dict_search_attributes).__name__}.")
+        dict_search_attributes_sorted = {key: dict_search_attributes[key] for key in sorted(dict_search_attributes.keys())}
+        lookup_dict = self._build_cached_lookup_dictionary(tuple_attributes=tuple(dict_search_attributes_sorted.keys()))
+        result = lookup_dict.get(
+            _dict_to_tuple(dict_search_attributes),
+            None
+        )
+        if raise_error_on_not_found == True and result is None:
+            raise KeyError(f"Node with attributes {dict_search_attributes} not found in the graph.")
+        else:
+            return result
+    
+    def clearcache(self):
+        """
+        Clears the cache of the lookup dictionary.
+        """
+        self._build_cached_lookup_dictionary.cache_clear()

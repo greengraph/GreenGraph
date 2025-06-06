@@ -3,7 +3,7 @@
 import pandas as pd
 
 from greengraph.importers.databases.inputoutput import exiobase
-from greengraph.utility.data import (
+from greengraph.utility.search import (
     _dict_to_tuple,
     _create_dynamic_lookup_dictionary
 )
@@ -71,31 +71,57 @@ H = GreenMultiDiGraph()
 
 set_locations_exio = {x for item in conc.values() for x in (item if isinstance(item, list) else [item])}
 
-lst = []
-for i, row_process in df.iterrows():
-    """
-    Case 1
+def option_lookup():
+    lst = []
+    for i, row_process in df.iterrows():
+        """
+        Case 1
 
-    One-to-one concordance of ecoinvent process to exiobase sector
+        One-to-one concordance of ecoinvent process to exiobase sector
 
-    Example
-    -------
-    ```
-    loc_process='US'
-    conc['US']='US'
-    ```
-    """
-    if row_process['location'] in set_locations_exio:
-        node_sector = dict_lookup.get(
-            (
-                ('location', row_process['location']),
-                ('name', row_process['exiobase_sector'])
+        Example
+        -------
+        ```
+        loc_process='US'
+        conc['US']='US'
+        ```
+        """
+        if row_process['location'] in set_locations_exio:
+            node_sector = dict_lookup.get(
+                (
+                    ('location', row_process['location']),
+                    ('name', row_process['exiobase_sector'])
+                )
             )
-        )
-        print(node_sector)
-    
-    # lst.append(row_process)
+            print(node_sector)
+        
+        # lst.append(row_process)
 
+
+def option_getnode():
+    lst = []
+    for i, row_process in df.iterrows():
+        """
+        Case 1
+
+        One-to-one concordance of ecoinvent process to exiobase sector
+
+        Example
+        -------
+        ```
+        loc_process='US'
+        conc['US']='US'
+        ```
+        """
+        if row_process['location'] in set_locations_exio:
+            node_sector = [
+                node for node, attr in Gexio.nodes(data=True)
+                if attr['name'] == row_process['exiobase_sector'] and
+                attr['location'] == row_process['location']
+            ]
+            print(node_sector)
+        
+        # lst.append(row_process)
 
 # %%
 

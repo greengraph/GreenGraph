@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from typing import Any, Optional
 import networkx as nx
 import numpy as np
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 from greengraph.core import GreenMultiDiGraph
 
 

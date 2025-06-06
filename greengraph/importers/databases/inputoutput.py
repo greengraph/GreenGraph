@@ -6,7 +6,7 @@ import zipfile
 
 from greengraph import APP_CACHE_BASE_DIR
 from greengraph.utility.download import _load_file_from_zenodo_with_caching
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 from greengraph.importers.databases.generic import graph_system_from_input_output_matrices
 from greengraph.core import GreenMultiDiGraph
 

@@ -1,6 +1,6 @@
 import requests
 from pathlib import Path
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 import logging
 from greengraph import APP_CACHE_BASE_DIR
 

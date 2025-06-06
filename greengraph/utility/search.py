@@ -1,6 +1,8 @@
 # %%
 import networkx as nx
 import copy
+from functools import lru_cache
+
 
 def _make_hashable(value) -> object:
     """
@@ -89,10 +91,9 @@ def _dict_to_tuple(d) -> tuple:
         raise TypeError(f"Failed to create hashable key for dict: {d!r}. Original error: {e}")
 
 
-def _create_dynamic_lookup_dictionary(
+def _build_lookup_dictionary(
     G: nx.MultiDiGraph,
-    node_type: str,
-    list_attributes: list[str],
+    tuple_attributes: tuple[str],
 ) -> dict:
     """
     Given a NetworkX graph and a list of key fields, creates a lookup dictionary.
@@ -147,12 +148,11 @@ def _create_dynamic_lookup_dictionary(
     dict_lookup = {
         _dict_to_tuple(
             {
-                key: attr[key] for key in list_attributes
+                key: attr[key] for key in tuple_attributes
                 if key in attr
             }
         ): node
         for node, attr in G.nodes(data=True)
-        if attr.get('type') == node_type
     }
     return dict_lookup
 

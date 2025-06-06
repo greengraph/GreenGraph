@@ -10,7 +10,7 @@ import numpy as np
 import scipy as sp
 import sparse
 import xarray as xr
-from greengraph.utility.logging import logtimer
+from greengraph.utility.log import logtimer
 
 def calculate_production_vector(
     IminusA: xr.DataArray,
