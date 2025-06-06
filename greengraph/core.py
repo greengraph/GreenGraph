@@ -801,21 +801,49 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     @lru_cache
     def _build_cached_lookup_dictionary(
         self,
-        tuple_attributes: tuple[str]
+        lookup_attributes: tuple[str],
+        node_filter: Optional[frozenset[Any]] = None,
+        check_unique: Optional[bool] = True
     ) -> dict[tuple[str], str]:
-        return _build_lookup_dictionary(G=self, tuple_attributes=tuple_attributes)
+        """
+        Warning
+        -------
+        > "Since a dictionary is used to cache results, the positional and keyword arguments to the function must be hashable."
+        Therefore, the `lookup_attributes` must be a tuple of strings, and the `node_filter` must be a frozenset of key-value pairs.
+
+        References
+        ----------
+        [`functools.lru_cache`](https://docs.python.org/3/library/functools.html#functools.lru_cache)
+        """
+        return _build_lookup_dictionary(
+            G=self,
+            lookup_attributes=lookup_attributes,
+            node_filter=dict(node_filter),
+            check_unique=check_unique
+        )
     
-    def search(
+    def hashsearch(
         self,
         dict_search_attributes: dict,
+        dict_filter_attributes: Optional[dict] = None,
         raise_error_on_not_found: Optional[bool] = False,
     ) -> Optional[str]:
+        """
+
+        """
+        
         if not isinstance(dict_search_attributes, dict):
             raise TypeError(f"Expected a dictionary for search attributes, but got {type(dict_search_attributes).__name__}.")
         dict_search_attributes_sorted = {key: dict_search_attributes[key] for key in sorted(dict_search_attributes.keys())}
-        lookup_dict = self._build_cached_lookup_dictionary(tuple_attributes=tuple(dict_search_attributes_sorted.keys()))
+        
+        lookup_dict = self._build_cached_lookup_dictionary(
+            lookup_attributes=tuple(dict_search_attributes_sorted.keys()),
+            node_filter=frozenset(dict_filter_attributes.items()),
+            check_unique=True,
+        )
+        
         result = lookup_dict.get(
-            _dict_to_tuple(dict_search_attributes),
+            tuple(dict_search_attributes_sorted.values()),
             None
         )
         if raise_error_on_not_found == True and result is None:
@@ -825,6 +853,15 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     
     def clearcache(self):
         """
-        Clears the cache of the lookup dictionary.
+        Clears the cache of all class methods that use the `lru_cache` decorator
+        for performance optimization.
+
+        See Also
+        --------
+        [`greengraph.core.GreenMultiDiGraph.hashsearch`][]
+
+        References
+        ----------
+        [`functools.lru_cache`](https://docs.python.org/3/library/functools.html#functools.lru_cache)
         """
         self._build_cached_lookup_dictionary.cache_clear()

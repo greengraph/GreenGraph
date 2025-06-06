@@ -2,6 +2,7 @@
 import networkx as nx
 import copy
 from functools import lru_cache
+from typing import Optional
 
 
 def _make_hashable(value) -> object:
@@ -93,7 +94,9 @@ def _dict_to_tuple(d) -> tuple:
 
 def _build_lookup_dictionary(
     G: nx.MultiDiGraph,
-    tuple_attributes: tuple[str],
+    lookup_attributes: tuple[str],
+    node_filter: Optional[dict[str, Any]] = None,
+    check_unique: Optional[bool] = True
 ) -> dict:
     """
     Given a NetworkX graph and a list of key fields, creates a lookup dictionary.
@@ -108,13 +111,14 @@ def _build_lookup_dictionary(
     }
     ```
 
+    and a tuple of lookup attributes like `('name', 'system')`,
     the function will create a lookup dictionary:
 
     ```python
     {
-        (('name', 'A'), ('system', 'X')): '123',
-        (('name', 'B'), ('system', 'X')): '456',
-        (('name', 'A'), ('system', 'Y')): '789',
+        ('A', 'X'): '123',
+        ('B', 'X'): '456',
+        ('A', 'Y'): '789',
     }
     ```
 
@@ -134,28 +138,58 @@ def _build_lookup_dictionary(
     ----------
     G : nx.MultiDiGraph
         The NetworkX graph from which to create the lookup dictionary.
+    lookup_attributes : tuple[str]
+        A tuple of lookup attributes. 
     node_type : str
-        The type of nodes to include in the lookup dictionary.
-    list_attributes : list[str]
-        The list of attributes to use as keys in the lookup dictionary.
+        The type of nodes to include in the lookup dictionary.  
+        This can be used to reduce the size of the lookup dictionary by filtering nodes based on their type.
+    check_unique : bool
+        If True, checks that the combination of attributes is unique across all nodes in the graph.
+        If False, allows for non-unique combinations, which can lead to overwriting entries in the dictionary.
 
     Returns
     -------
     dict
         A dictionary where the keys are tuples of attribute values and the values are node identifiers.
         The keys are created by converting the specified attributes of the nodes into tuples.
-    """
-    dict_lookup = {
-        _dict_to_tuple(
-            {
-                key: attr[key] for key in tuple_attributes
-                if key in attr
-            }
-        ): node
-        for node, attr in G.nodes(data=True)
-    }
-    return dict_lookup
 
+    Raises
+    ------
+    ValueError
+        If `check_unique` is True and the combination of attributes is not unique across all nodes in the graph.
+    TypeError
+        If the `lookup_attributes` is not a tuple or if the attributes are not present in the node data.
+    """
+    
+    if not isinstance(lookup_attributes, tuple):
+        raise TypeError(f"Expected lookup_attributes to be a tuple, but got {type(lookup_attributes).__name__}.")
+    
+    sorted_lookup_attributes = tuple(sorted(lookup_attributes))
+    dict_lookup = {}
+
+    for node, attr in G.nodes(data=True):
+        if node_filter is not None:
+            if not all(attr.get(key) == value for key, value in node_filter.items()):
+                continue
+        try:
+            lookup_key = tuple(
+                _make_hashable(attr.get(key)) for key in sorted_lookup_attributes
+            )
+        except KeyError as e:
+            raise KeyError(f"Node {node} is missing one of the lookup attributes: {sorted_lookup_attributes}.") from e
+        
+        if lookup_key in dict_lookup:
+            if check_unique:
+                raise ValueError(
+                    f"Duplicate key found in lookup dictionary: {lookup_key}. "
+                    "This indicates that the combination of attributes is not unique."
+                )
+            else:
+                continue
+        else:
+            dict_lookup[lookup_key] = node
+    
+    return dict_lookup
 
 def _remove_duplicate_dictionaries(list_dicts) -> list[dict]:
     """
