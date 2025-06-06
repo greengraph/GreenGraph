@@ -1,42 +1,12 @@
 # %%
 
 import pandas as pd
+from typing import Any
 
 from greengraph.importers.databases.inputoutput import exiobase
 from greengraph.utility.search import (
     _dict_to_tuple,
-    _create_dynamic_lookup_dictionary
 )
-
-# %%
-
-df = pd.read_excel(
-    "/Users/michaelweinold/github/pylcaio/src/Data/ecoinvent/ei3.10/mappings/filters.xlsx",
-    sheet_name="Hybridized processes",
-    header=0,
-).dropna(axis=1, how='all')
-
-df['geography code'] = df['location']
-df['matching'] = df[['name', 'geography code']].to_dict(orient='records')
-df['matching'] = df['matching'].apply(
-    lambda row: _dict_to_tuple(row)
-)
-
-dict_lookup_eco = _create_dynamic_lookup_dictionary(
-    G=Geco,
-    node_type='production',
-    list_attributes=['name', 'geography code']
-)
-
-df['matched'] = df['matching'].map(dict_lookup_eco)
-
-# %%
-
-Gexio = exiobase.create_graph(
-        version='3.8.2',
-        year=2021,
-        type='pxp'
-    )
 
 # %%
 
@@ -44,13 +14,18 @@ import pickle
 with open('/Users/michaelweinold/github/GreenGraph/dev/Geco.pkl', 'rb') as f:
     Geco = pickle.load(f)
 
+with open('/Users/michaelweinold/github/GreenGraph/dev/Gexio.pkl', 'rb') as f:
+    Gexio = pickle.load(f)
+
 # %%
 
-dict_lookup = _create_dynamic_lookup_dictionary(
-    G=Gexio,
-    node_type='production',
-    list_attributes=['name', 'location']
-)
+df = pd.read_excel(
+    "/Users/michaelweinold/github/pylcaio/src/Data/ecoinvent/ei3.10/mappings/filters.xlsx",
+    sheet_name="Hybridized processes",
+    header=0,
+).dropna(axis=0, how='any')
+
+# %%
 
 import json
 from importlib import resources
@@ -59,7 +34,6 @@ conc = {}
 with resources.open_text("greengraph.data.concordance", "geography_ecoinvent_exiobase.json") as file:
     conc = json.load(file)
 
-df['matched2'] = df['matching']
 
 # %%
 
@@ -86,17 +60,59 @@ def option_lookup():
         conc['US']='US'
         ```
         """
+        node = Geco.hashsearch(
+            dict_search_attributes={
+                'name': row_process['name'],
+                'product': row_process['reference product'],
+                'geography code': row_process['location'],
+            },
+            dict_filter_attributes={
+                'type': 'production'
+            }
+        )
         if row_process['location'] in set_locations_exio:
-            node_sector = dict_lookup.get(
-                (
-                    ('location', row_process['location']),
-                    ('name', row_process['exiobase_sector'])
-                )
+            node_sector = Gexio.hashsearch(
+                dict_search_attributes={
+                    'name': row_process['exiobase_sector'],
+                    'location': row_process['location'],
+                },
+                dict_filter_attributes={
+                    'type': 'production'
+                }
             )
-            print(node_sector)
+            #print(node_sector)
+        if row_process['location'] == 'RoW':
+            continue
+        if isinstance(conc[row_process['location']], str):
+            node_sector = Gexio.hashsearch(
+                dict_search_attributes={
+                    'name': row_process['exiobase_sector'],
+                    'location': conc[row_process['location']],
+                },
+                dict_filter_attributes={
+                    'type': 'production'
+                }
+            )
+        if isinstance(conc[row_process['location']], list):
+            nodes_sectors = []
+            for loc in conc[row_process['location']]:
+                node_sector = Gexio.hashsearch(
+                    dict_search_attributes={
+                        'name': row_process['exiobase_sector'],
+                        'location': loc,
+                    },
+                    dict_filter_attributes={
+                        'type': 'production'
+                    }
+                )
+                if node_sector is not None:
+                    nodes_sectors.append(node_sector)
+            print(nodes_sectors)
         
         # lst.append(row_process)
 
+
+# %%
 
 def option_getnode():
     lst = []
@@ -119,7 +135,6 @@ def option_getnode():
                 if attr['name'] == row_process['exiobase_sector'] and
                 attr['location'] == row_process['location']
             ]
-            print(node_sector)
         
         # lst.append(row_process)
 

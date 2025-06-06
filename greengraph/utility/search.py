@@ -2,7 +2,8 @@
 import networkx as nx
 import copy
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Any
+import collections
 
 
 def _make_hashable(value) -> object:
@@ -94,10 +95,10 @@ def _dict_to_tuple(d) -> tuple:
 
 def _build_lookup_dictionary(
     G: nx.MultiDiGraph,
-    lookup_attributes: tuple[str],
-    node_filter: Optional[dict[str, Any]] = None,
-    check_unique: Optional[bool] = True
-) -> dict:
+    attributes_lookup: tuple[str],
+    attributes_filter: Optional[dict[str, Any]] = None,
+    enforce_unique_key_value_pairs: Optional[bool] = True
+) -> dict | collections.defaultdict:
     """
     Given a NetworkX graph and a list of key fields, creates a lookup dictionary.
     
@@ -124,6 +125,12 @@ def _build_lookup_dictionary(
 
     This allows for highly performant lookups.
 
+    Warning
+    -------
+    If `enforce_unique_key_value_pairs` is set to True, the function will raise a ValueError
+    if the combination of attributes is not unique across all nodes in the graph.
+    If set to False, it will allow for non-unique combinations
+
     Example
     -------
     ```python
@@ -138,12 +145,12 @@ def _build_lookup_dictionary(
     ----------
     G : nx.MultiDiGraph
         The NetworkX graph from which to create the lookup dictionary.
-    lookup_attributes : tuple[str]
+    attributes_lookup : tuple[str]
         A tuple of lookup attributes. 
     node_type : str
         The type of nodes to include in the lookup dictionary.  
         This can be used to reduce the size of the lookup dictionary by filtering nodes based on their type.
-    check_unique : bool
+    enforce_unique_key_value_pairs : bool
         If True, checks that the combination of attributes is unique across all nodes in the graph.
         If False, allows for non-unique combinations, which can lead to overwriting entries in the dictionary.
 
@@ -156,38 +163,36 @@ def _build_lookup_dictionary(
     Raises
     ------
     ValueError
-        If `check_unique` is True and the combination of attributes is not unique across all nodes in the graph.
+        If `enforce_unique_key_value_pairs` is True and the combination of attributes is not unique across all nodes in the graph.
     TypeError
-        If the `lookup_attributes` is not a tuple or if the attributes are not present in the node data.
+        If the `attributes_lookup` is not a tuple or if the attributes are not present in the node data.
     """
     
-    if not isinstance(lookup_attributes, tuple):
-        raise TypeError(f"Expected lookup_attributes to be a tuple, but got {type(lookup_attributes).__name__}.")
+    if not isinstance(attributes_lookup, tuple):
+        raise TypeError(f"Expected attributes_lookup to be a tuple, but got {type(attributes_lookup).__name__}.")
     
-    sorted_lookup_attributes = tuple(sorted(lookup_attributes))
-    dict_lookup = {}
+    sorted_attributes_lookup = tuple(sorted(attributes_lookup))
+    dict_lookup = collections.defaultdict(list)
 
     for node, attr in G.nodes(data=True):
-        if node_filter is not None:
-            if not all(attr.get(key) == value for key, value in node_filter.items()):
+        if attributes_filter is not None:
+            if not all(attr.get(key) == value for key, value in attributes_filter.items()):
                 continue
         try:
             lookup_key = tuple(
-                _make_hashable(attr.get(key)) for key in sorted_lookup_attributes
+                _make_hashable(attr.get(key)) for key in sorted_attributes_lookup
             )
         except KeyError as e:
-            raise KeyError(f"Node {node} is missing one of the lookup attributes: {sorted_lookup_attributes}.") from e
+            raise KeyError(f"Node {node} is missing one of the lookup attributes: {sorted_attributes_lookup}.") from e
         
-        if lookup_key in dict_lookup:
-            if check_unique:
-                raise ValueError(
-                    f"Duplicate key found in lookup dictionary: {lookup_key}. "
-                    "This indicates that the combination of attributes is not unique."
-                )
-            else:
-                continue
-        else:
-            dict_lookup[lookup_key] = node
+        dict_lookup[lookup_key].append(node)
+        
+        if enforce_unique_key_value_pairs and len(dict_lookup[lookup_key]) > 1:
+            raise ValueError(
+                f"Duplicate key found: {lookup_key}. "
+                f"Nodes {dict_lookup[lookup_key]} share the same attributes. "
+                "Set enforce_unique_key_value_pairs=False to allow this."
+            )
     
     return dict_lookup
 

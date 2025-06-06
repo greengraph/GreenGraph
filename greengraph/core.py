@@ -675,7 +675,7 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     def get_random_node(
         self,
         type: Optional[str] = None,
-        data: bool = False,
+        data: bool = True,
     ) -> str | tuple[str, dict[str, Any]]:
         r"""
         Returns a random node from the graph.
@@ -801,15 +801,15 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
     @lru_cache
     def _build_cached_lookup_dictionary(
         self,
-        lookup_attributes: tuple[str],
-        node_filter: Optional[frozenset[Any]] = None,
-        check_unique: Optional[bool] = True
+        attributes_lookup: tuple[str],
+        attributes_filter: Optional[frozenset[Any]] = None,
+        enforce_unique_key_value_pairs: Optional[bool] = True
     ) -> dict[tuple[str], str]:
         """
         Warning
         -------
         > "Since a dictionary is used to cache results, the positional and keyword arguments to the function must be hashable."
-        Therefore, the `lookup_attributes` must be a tuple of strings, and the `node_filter` must be a frozenset of key-value pairs.
+        Therefore, the `attributes_lookup` must be a tuple of strings, and the `attributes_filter` must be a frozenset of key-value pairs.
 
         References
         ----------
@@ -817,18 +817,23 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         """
         return _build_lookup_dictionary(
             G=self,
-            lookup_attributes=lookup_attributes,
-            node_filter=dict(node_filter),
-            check_unique=check_unique
+            attributes_lookup=attributes_lookup,
+            attributes_filter=dict(attributes_filter),
+            enforce_unique_key_value_pairs=enforce_unique_key_value_pairs
         )
     
     def hashsearch(
         self,
         dict_search_attributes: dict,
-        dict_filter_attributes: Optional[dict] = None,
+        dict_filter_attributes: Optional[dict] = {},
+        enforce_unique_results: Optional[bool] = True,
         raise_error_on_not_found: Optional[bool] = False,
     ) -> Optional[str]:
         """
+
+        Warnings
+        -------
+        The search attributes must be unique!
 
         """
         
@@ -837,9 +842,9 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
         dict_search_attributes_sorted = {key: dict_search_attributes[key] for key in sorted(dict_search_attributes.keys())}
         
         lookup_dict = self._build_cached_lookup_dictionary(
-            lookup_attributes=tuple(dict_search_attributes_sorted.keys()),
-            node_filter=frozenset(dict_filter_attributes.items()),
-            check_unique=True,
+            attributes_lookup=tuple(dict_search_attributes_sorted.keys()),
+            attributes_filter=frozenset(dict_filter_attributes.items()),
+            enforce_unique_key_value_pairs=enforce_unique_results,
         )
         
         result = lookup_dict.get(
