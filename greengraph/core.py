@@ -621,12 +621,16 @@ class GreenMultiDiGraph(nx.MultiDiGraph):
 
         Parameters
         ----------
-        conditions: dict
+        dict_conditions: dict
             A dictionary of node attributes to match.  
             
             | keys           | values         |
             |----------------|----------------|
             | node attribute | expected value |
+
+        data : bool, optional
+            If `True`, returns the node and its attributes.  
+            If `False`, returns only the node (=UUID string). Default is `False`.
 
         Notes
         -----

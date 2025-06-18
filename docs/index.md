@@ -25,4 +25,3 @@ flowchart LR
     style Sectors fill:transparent
     style s3 fill:transparent
 ```
-

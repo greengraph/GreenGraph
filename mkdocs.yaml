@@ -13,8 +13,9 @@ nav:
   - Architecture:
     - Overview: 'architecture/overview.md'
   - Practice:
-    - Getting Started: 'practive/gettingstarted.md'
+    - Getting Started: 'practice/gettingstarted.md'
     - Working with the Graph: 'practice/graph.md'
+    - Input-Output Analysis: 'practice/io.md'
   - API Reference:
   #  - Concordance: 'api/concordance.md'
   #  - Characterization: 'api/characterization.md'
@@ -22,6 +23,8 @@ nav:
     - Math: 
       - Matrix: 'api/math/matrix.md'
       - Conversion: 'api/math/conversion.md'
+    - Hybridization:
+      - Ecoinvent/Exiobase: 'api/hybrid/ecoinvent+exiobase.md'
     - Import:
       - Databases:
         - Generic: 'api/importers/databases/generic.md'
@@ -70,10 +73,11 @@ plugins:
               show_source: true
               filters: []
               separate_signature: true
-
   - markdown-exec
-  #- autorefs
   - include-markdown
+  - ezglossary # https://realtimeprojects.github.io/mkdocs-ezglossary/usage/linking/
+
+
 markdown_extensions:
   - admonition
   - pymdownx.superfences:
@@ -87,9 +91,11 @@ markdown_extensions:
       generic: true
   - abbr
   - attr_list
+  - def_list
   - pymdownx.snippets
   - pymdownx.highlight:
       use_pygments: false
+  - pymdownx.caret
 
 extra_javascript:
   - _javascripts/katex.js

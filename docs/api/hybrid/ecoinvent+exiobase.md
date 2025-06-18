@@ -1,0 +1,1 @@
+::: greengraph.hybrid.ecoinvent+exiobase
