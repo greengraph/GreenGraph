@@ -1,15 +1,17 @@
 # %%
+from importlib import resources
+import json
 
 import pickle
-with open('/Users/michaelweinold/github/GreenGraph/dev/Geco.pkl', 'rb') as f:
-    Geco = pickle.load(f)
+#with open('/Users/michaelweinold/github/GreenGraph/dev/Geco.pkl', 'rb') as f:
+#    Geco = pickle.load(f)
 
 with open('/Users/michaelweinold/github/GreenGraph/dev/Gexio.pkl', 'rb') as f:
     Gexio = pickle.load(f)
 
-concordance = {}
-with resources.open_text("greengraph.data.concordance", "geography_ecoinvent_exiobase.json") as file:
-    concordance = json.load(file)
+#concordance = {}
+#with resources.open_text("greengraph.data.concordance", "geography_ecoinvent_exiobase.json") as file:
+#    concordance = json.load(file)
 
 # %%
 

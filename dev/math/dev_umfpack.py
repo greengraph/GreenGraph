@@ -9,3 +9,5 @@ A = IminusAeco.data.tocsr()
 f = np.zeros(A.shape[0])
 f[0] = 1.0
 
+
+# %%
